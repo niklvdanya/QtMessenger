@@ -36,11 +36,11 @@ void AsyncTcpServer::onClientDisconnected(QUuid uuid) {
     qDebug() << "Клиент отключился, UUID:" << uuid;
 }
 
-void AsyncTcpServer::onMessageReceived(const QString& message, QUuid senderId) {
-    qDebug() << "Получено сообщение от" << senderId << ":" << message;
+void AsyncTcpServer::onMessageReceived(const QString& message, QUuid senderId, const QString& username) {
+    qDebug() << "Получено сообщение от" << senderId << "(" << username << "):" << message;
     for (const auto& pair : m_clients) {
         if (pair.first != senderId) {
-            pair.second->sendMessage(message);
+            pair.second->sendMessage(username + ":" + message);
         }
     }
 }

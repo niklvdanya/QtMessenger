@@ -27,7 +27,7 @@ public:
 private slots:
     void onNewConnection();
     void onClientDisconnected(QUuid uuid);
-    void onMessageReceived(const QString& message, QUuid senderId);
+    void onMessageReceived(const QString& message, QUuid senderId, const QString& username);
 
 private:
     QThreadPool m_pool;

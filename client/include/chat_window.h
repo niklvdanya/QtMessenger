@@ -10,6 +10,7 @@ class ChatWindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit ChatWindow(QWidget* parent = nullptr);
+    QString username() const; 
 
 private slots:
     void sendMessage();
@@ -19,4 +20,5 @@ private:
     QLineEdit* m_inputField;
     QPushButton* m_sendButton;
     NetworkClient* m_networkClient;
+    QString m_username;
 };

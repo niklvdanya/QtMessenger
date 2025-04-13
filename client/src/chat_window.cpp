@@ -3,6 +3,8 @@
 #include "message.h"
 #include <QVBoxLayout>
 #include <QDebug>
+#include <QInputDialog>
+#include <QRandomGenerator>
 
 ChatWindow::ChatWindow(QWidget* parent) : QMainWindow(parent) {
     QWidget* centralWidget = new QWidget(this);
@@ -18,16 +20,30 @@ ChatWindow::ChatWindow(QWidget* parent) : QMainWindow(parent) {
     
     setCentralWidget(centralWidget);
     
+    bool ok;
+    m_username = QInputDialog::getText(this, "Введите имя", 
+                                       "Ваше имя:", QLineEdit::Normal, 
+                                       "User", &ok);
+    if (!ok || m_username.isEmpty()) {
+        m_username = "Guest_" + QString::number(QRandomGenerator::global()->bounded(1000));
+    }
+    
     m_networkClient = new NetworkClient(this);
-    m_networkClient->connectToServer("127.0.0.1", 12345);
+    m_networkClient->connectToServer("127.0.0.1", 12345, m_username);
     
     connect(m_sendButton, &QPushButton::clicked, this, &ChatWindow::sendMessage);
     connect(m_networkClient, &NetworkClient::messageReceived, this, 
-        [this](const QString& message) {
-            m_chatHistory->addItem(QString("[%1] Server: %2")
+        [this](const QString& sender, const QString& message) {
+            QString displayName = (sender == m_username) ? "You" : sender;
+            m_chatHistory->addItem(QString("[%1] %2: %3")
                 .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                .arg(displayName)
                 .arg(message));
         });
+}
+
+QString ChatWindow::username() const {
+    return m_username;
 }
 
 void ChatWindow::sendMessage() {
