@@ -7,6 +7,8 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+find_package(Boost REQUIRED COMPONENTS system)
+
 # Найти Qt6
 find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
 
@@ -14,6 +16,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets)
 add_library(common_lib STATIC
     common/src/message.cpp
     common/include/message.h
+    common/include/quuid_hash.h
 )
 
 target_include_directories(common_lib PUBLIC
@@ -29,8 +32,10 @@ add_executable(chat_server
     server/src/main.cpp
     server/src/async_tcp_server.cpp
     server/src/client_session.cpp
+    server/src/multithreaded_server.cpp
     server/include/async_tcp_server.h
     server/include/client_session.h
+    server/include/multithreaded_server.h
 )
 
 target_include_directories(chat_server PRIVATE
@@ -42,6 +47,26 @@ target_link_libraries(chat_server PRIVATE
     Qt6::Core
     Qt6::Network
     common_lib
+    Boost::system
+)
+
+# Многопоточный сервер
+add_executable(chat_server_mt
+    server/src/main_multithreaded.cpp
+    server/src/multithreaded_server.cpp
+    server/include/multithreaded_server.h
+)
+
+target_include_directories(chat_server_mt PRIVATE
+    ${CMAKE_SOURCE_DIR}/server/include
+    ${CMAKE_SOURCE_DIR}/common/include
+)
+
+target_link_libraries(chat_server_mt PRIVATE
+    Qt6::Core
+    Qt6::Network
+    common_lib
+    Boost::system
 )
 
 # Клиент

@@ -6,14 +6,7 @@
 #include <QObject>
 #include <QUuid>
 #include <QHash>
-
-namespace std {
-    template<> struct hash<QUuid> {
-        size_t operator()(const QUuid& uuid) const noexcept {
-            return qHash(uuid);
-        }
-    };
-}
+#include "quuid_hash.h"
 
 class ClientSession;
 
