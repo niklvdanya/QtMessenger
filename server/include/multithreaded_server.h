@@ -1,5 +1,6 @@
 #pragma once
 #include <boost/asio.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <memory>
 #include <unordered_map>
 #include <QUuid>
@@ -7,7 +8,7 @@
 #include <vector>
 #include <mutex>
 #include <QObject>
-#include <string> // Добавлено для std::string
+#include <string>
 #include "message.h"
 #include "quuid_hash.h"
 
@@ -38,7 +39,7 @@ private:
     boost::asio::ip::tcp::acceptor m_acceptor;
     std::vector<std::thread> m_threads;
     std::unordered_map<QUuid, std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
-    std::unordered_map<QUuid, std::string> m_usernames; // Изменено с QString на std::string
+    std::unordered_map<QUuid, std::string> m_usernames;
     std::mutex m_clients_mutex;
     bool m_running;
 };

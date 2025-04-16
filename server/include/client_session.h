@@ -1,6 +1,6 @@
 #pragma once
 #include <QObject>
-#include <QTcpSocket> // Добавлено для полного определения QTcpSocket
+#include <QTcpSocket>
 #include <memory>
 #include <QUuid>
 #include <string>
@@ -20,8 +20,8 @@ signals:
     void disconnected(QUuid uuid);
 
 private slots:
-    void readMessage();
     void readUsername();
+    void readMessage();
     void onDisconnected();
 
 private:

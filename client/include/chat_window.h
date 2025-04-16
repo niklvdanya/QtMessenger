@@ -5,7 +5,7 @@
 #include <QPushButton>
 #include <memory>
 #include <string>
-#include "network_client.h"
+#include "inetwork_client.h"
 
 class ChatWindow : public QMainWindow {
     Q_OBJECT
@@ -23,6 +23,6 @@ private:
     std::unique_ptr<QListWidget> m_chatHistory;
     std::unique_ptr<QLineEdit> m_inputField;
     std::unique_ptr<QPushButton> m_sendButton;
-    std::unique_ptr<NetworkClient> m_networkClient;
+    std::unique_ptr<INetworkClient> m_networkClient;
     std::string m_username;
 };
