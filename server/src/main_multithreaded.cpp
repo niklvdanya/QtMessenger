@@ -1,28 +1,29 @@
-#include "multithreaded_server.h"
 #include <QCoreApplication>
 #include <QDebug>
+#include "multithreaded_server.h"
 
-int main(int argc, char* argv[]) {
-    QCoreApplication app(argc, argv);
-    
+int main(int argc, char *argv[])
+{
+    QCoreApplication a(argc, argv);
+
     MultithreadedServer server(12345, 4);
-    
-    QObject::connect(&server, &MultithreadedServer::newConnection,
-        [](QUuid clientId) {
-            qDebug() << "Новое подключение:" << clientId;
-        });
-    
-    QObject::connect(&server, &MultithreadedServer::clientDisconnected,
-        [](QUuid clientId) {
-            qDebug() << "Отключение клиента:" << clientId;
-        });
-    
-    QObject::connect(&server, &MultithreadedServer::messageReceived,
-        [](const QString& message, QUuid senderId, const QString& username) {
-            qDebug() << "Сообщение от" << username << "(" << senderId << "):" << message;
-        });
-    
     server.start();
-    
-    return app.exec();
-} 
+
+    QObject::connect(&server, &MultithreadedServer::newConnection,
+                     [](QUuid clientId) {
+                         qDebug() << "Новое подключение:" << clientId;
+                     });
+
+    QObject::connect(&server, &MultithreadedServer::clientDisconnected,
+                     [](QUuid clientId) {
+                         qDebug() << "Клиент отключился:" << clientId;
+                     });
+
+    QObject::connect(&server, &MultithreadedServer::messageReceived,
+                     [](const std::string& message, QUuid senderId, const std::string& username) {
+                         qDebug() << "Сообщение от" << QString::fromStdString(username) 
+                                  << "(" << senderId << "):" << QString::fromStdString(message);
+                     });
+
+    return a.exec();
+}

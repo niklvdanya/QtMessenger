@@ -1,19 +1,19 @@
 #pragma once
-#include <QString>
-#include <QDateTime>
 #include <QUuid>
+#include <QDateTime>
 #include <QDataStream>
+#include <string>
 
 struct Message {
     QUuid senderId;
-    QString username;
-    QString text;
+    std::string username;
+    std::string text;
     QDateTime timestamp;
-    
-    bool operator==(const Message& other) const {
-        return senderId == other.senderId && 
+
+    bool operator==(const Message& other) const noexcept {
+        return senderId == other.senderId &&
                username == other.username &&
-               text == other.text && 
+               text == other.text &&
                timestamp == other.timestamp;
     }
 };

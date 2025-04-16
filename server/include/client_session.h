@@ -1,19 +1,22 @@
 #pragma once
 #include <QObject>
-#include <QTcpSocket>
+#include <QTcpSocket> // Добавлено для полного определения QTcpSocket
+#include <memory>
 #include <QUuid>
+#include <string>
 
 class ClientSession : public QObject {
     Q_OBJECT
 public:
-    explicit ClientSession(QTcpSocket* socket, QObject* parent = nullptr);
-    ~ClientSession() = default;
-    QUuid uuid() const;
-    QString username() const; 
-    void sendMessage(const QString& message);
+    explicit ClientSession(std::unique_ptr<QTcpSocket> socket, QObject* parent = nullptr);
+    ~ClientSession() override = default;
+
+    QUuid uuid() const noexcept;
+    std::string username() const;
+    void sendMessage(const std::string& message);
 
 signals:
-    void messageReceived(const QString& message, QUuid senderId, const QString& username); 
+    void messageReceived(const std::string& message, QUuid senderId, const std::string& username);
     void disconnected(QUuid uuid);
 
 private slots:
@@ -22,7 +25,7 @@ private slots:
     void onDisconnected();
 
 private:
-    QTcpSocket* m_socket;
+    std::unique_ptr<QTcpSocket> m_socket;
     QUuid m_uuid;
-    QString m_username; 
+    std::string m_username;
 };

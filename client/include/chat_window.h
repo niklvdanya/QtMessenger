@@ -3,22 +3,26 @@
 #include <QListWidget>
 #include <QLineEdit>
 #include <QPushButton>
-
-class NetworkClient;
+#include <memory>
+#include <string>
+#include "network_client.h"
 
 class ChatWindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit ChatWindow(QWidget* parent = nullptr);
-    QString username() const; 
+    std::string username() const;
 
 private slots:
     void sendMessage();
 
 private:
-    QListWidget* m_chatHistory;
-    QLineEdit* m_inputField;
-    QPushButton* m_sendButton;
-    NetworkClient* m_networkClient;
-    QString m_username;
+    void setupUi();
+    void connectSignals();
+
+    std::unique_ptr<QListWidget> m_chatHistory;
+    std::unique_ptr<QLineEdit> m_inputField;
+    std::unique_ptr<QPushButton> m_sendButton;
+    std::unique_ptr<NetworkClient> m_networkClient;
+    std::string m_username;
 };

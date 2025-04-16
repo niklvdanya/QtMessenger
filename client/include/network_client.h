@@ -1,21 +1,27 @@
 #pragma once
 #include <QObject>
 #include <QTcpSocket>
-#include <QUuid>
+#include <memory>
+#include <string_view>
 
 class NetworkClient : public QObject {
     Q_OBJECT
 public:
     explicit NetworkClient(QObject* parent = nullptr);
-    void connectToServer(const QString& host, quint16 port, const QString& username);
-    void sendMessage(const QString& message);
+    ~NetworkClient() override = default;
 
-    signals:
-    void messageReceived(const QString& sender, const QString& message);
+    void connectToServer(std::string_view host, uint16_t port, std::string_view username);
+    void sendMessage(std::string_view message);
+
+signals:
+    void messageReceived(const std::string& sender, const std::string& message);
+    void disconnected();
+
 private slots:
+    void onConnected();
     void onReadyRead();
 
 private:
-    QTcpSocket* m_socket;
-    QString m_username;
+    std::unique_ptr<QTcpSocket> m_socket;
+    std::string m_username;
 };

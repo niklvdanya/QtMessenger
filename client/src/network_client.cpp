@@ -3,44 +3,45 @@
 #include <QDataStream>
 #include <QDebug>
 
-NetworkClient::NetworkClient(QObject* parent) 
-    : QObject(parent), m_socket(new QTcpSocket(this)), m_username("Guest") {
-    connect(m_socket, &QTcpSocket::readyRead, this, &NetworkClient::onReadyRead);
-    connect(m_socket, &QTcpSocket::connected, this, []() {
-        qDebug() << "Клиент подключился к серверу!";
-    });
-    connect(m_socket, &QTcpSocket::errorOccurred, this, [](QAbstractSocket::SocketError) {
-        qDebug() << "Ошибка подключения!";
-    });
+NetworkClient::NetworkClient(QObject* parent) : QObject(parent) {
 }
 
-void NetworkClient::connectToServer(const QString& host, quint16 port, const QString& username) {
+void NetworkClient::connectToServer(std::string_view host, uint16_t port, std::string_view username) {
     m_username = username;
-    qDebug() << "Попытка подключения к" << host << ":" << port << "с именем" << m_username;
-    m_socket->connectToHost(host, port);
-    
-    connect(m_socket, &QTcpSocket::connected, this, [this]() {
-        QDataStream stream(m_socket);
-        stream << m_username;
-        qDebug() << "Отправлено имя:" << m_username;
-    }, Qt::SingleShotConnection);
+    m_socket = std::make_unique<QTcpSocket>(this);
+
+    connect(m_socket.get(), &QTcpSocket::connected, this, &NetworkClient::onConnected);
+    connect(m_socket.get(), &QTcpSocket::readyRead, this, &NetworkClient::onReadyRead);
+    connect(m_socket.get(), &QTcpSocket::disconnected, this, &NetworkClient::disconnected);
+
+    m_socket->connectToHost(QString::fromStdString(std::string(host)), port);
 }
 
-void NetworkClient::sendMessage(const QString& message) {
+void NetworkClient::sendMessage(std::string_view message) {
+    if (!m_socket || m_socket->state() != QAbstractSocket::ConnectedState) {
+        qDebug() << "Не подключен к серверу";
+        return;
+    }
+
     Message msg;
     msg.senderId = QUuid::createUuid();
     msg.username = m_username;
-    msg.text = message;
+    msg.text = std::string(message);
     msg.timestamp = QDateTime::currentDateTime();
-    QDataStream stream(m_socket);
+
+    QDataStream stream(m_socket.get());
     stream << msg;
-    qDebug() << "Отправлено сообщение:" << message;
+}
+
+void NetworkClient::onConnected() {
+    QDataStream stream(m_socket.get());
+    stream << QString::fromStdString(m_username);
+    qDebug() << "Подключено к серверу, отправлено имя:" << QString::fromStdString(m_username);
 }
 
 void NetworkClient::onReadyRead() {
-    QDataStream stream(m_socket);
+    QDataStream stream(m_socket.get());
     Message msg;
     stream >> msg;
-    qDebug() << "Получено сообщение:" << msg.text << "от" << msg.username;
-    emit messageReceived(msg.username, msg.text); 
+    emit messageReceived(msg.username, msg.text);
 }

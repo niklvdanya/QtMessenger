@@ -2,16 +2,13 @@
 #include "client_session.h"
 #include <QDebug>
 
-AsyncTcpServer::AsyncTcpServer(QObject* parent) 
-    : QTcpServer(parent), m_pool(), m_clients() {
+AsyncTcpServer::AsyncTcpServer(QObject* parent) : QTcpServer(parent) {
     connect(this, &QTcpServer::newConnection, this, &AsyncTcpServer::onNewConnection);
 }
 
-AsyncTcpServer::~AsyncTcpServer() {
-    m_clients.clear();
-}
+AsyncTcpServer::~AsyncTcpServer() = default;
 
-void AsyncTcpServer::start(quint16 port) {
+void AsyncTcpServer::start(uint16_t port) {
     if (!listen(QHostAddress::Any, port)) {
         qDebug() << "Сервер не смог запуститься! Ошибка:" << errorString();
     } else {
@@ -20,14 +17,15 @@ void AsyncTcpServer::start(quint16 port) {
 }
 
 void AsyncTcpServer::onNewConnection() {
-    QTcpSocket* socket = nextPendingConnection();
-    auto* session = new ClientSession(socket);
-    m_clients.emplace(session->uuid(), std::unique_ptr<ClientSession>(session));
-    qDebug() << "Новое подключение, UUID:" << session->uuid();
-    
-    connect(session, &ClientSession::disconnected, 
+    auto* raw_socket = nextPendingConnection();
+    auto session = std::make_unique<ClientSession>(std::unique_ptr<QTcpSocket>(raw_socket));
+    QUuid uuid = session->uuid();
+    m_clients.emplace(uuid, std::move(session));
+    qDebug() << "Новое подключение, UUID:" << uuid;
+
+    connect(m_clients[uuid].get(), &ClientSession::disconnected, 
             this, &AsyncTcpServer::onClientDisconnected);
-    connect(session, &ClientSession::messageReceived,
+    connect(m_clients[uuid].get(), &ClientSession::messageReceived,
             this, &AsyncTcpServer::onMessageReceived);
 }
 
@@ -36,8 +34,9 @@ void AsyncTcpServer::onClientDisconnected(QUuid uuid) {
     qDebug() << "Клиент отключился, UUID:" << uuid;
 }
 
-void AsyncTcpServer::onMessageReceived(const QString& message, QUuid senderId, const QString& username) {
-    qDebug() << "Получено сообщение от" << senderId << "(" << username << "):" << message;
+void AsyncTcpServer::onMessageReceived(const std::string& message, QUuid senderId, const std::string& username) {
+    qDebug() << "Получено сообщение от" << senderId.toString() 
+             << "(" << QString::fromStdString(username) << "):" << QString::fromStdString(message);
     for (const auto& pair : m_clients) {
         if (pair.first != senderId) {
             pair.second->sendMessage(username + ":" + message);
