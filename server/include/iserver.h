@@ -1,7 +1,9 @@
 #pragma once
 #include <cstdint>
+#include <memory>
 #include <QUuid>
 #include <string>
+#include "client_session_interface.h"
 
 class IMessageHandler {
 public:
@@ -12,7 +14,7 @@ public:
 class IClientManager {
 public:
     virtual ~IClientManager() = default;
-    virtual void addClient(QUuid clientId, void* clientData) = 0;
+    virtual void addClient(QUuid clientId, std::unique_ptr<IClientSession> client) = 0;
     virtual void removeClient(QUuid clientId) = 0;
     virtual void broadcastMessage(const std::string& message, QUuid senderId, const std::string& username) = 0;
 };

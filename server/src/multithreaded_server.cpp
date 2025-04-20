@@ -1,14 +1,16 @@
 #include "multithreaded_server.h"
+#include "boost_asio_client_session.h"
 #include <QDebug>
 #include <QDataStream>
 #include <QByteArray>
-#include <mutex>
 
 MultithreadedServer::MultithreadedServer(unsigned short port, int thread_count, QObject* parent)
-    : QObject(parent)
-    , m_io_context()
-    , m_acceptor(m_io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
-    , m_running(false) {
+    : QObject(parent),
+      m_io_context(),
+      m_acceptor(m_io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
+      m_clientManager(std::make_shared<ClientManager>()),
+      m_messageHandler(std::make_shared<MessageHandler>(m_clientManager)),
+      m_running(false) {
     m_threads.reserve(thread_count);
 }
 
@@ -16,7 +18,7 @@ MultithreadedServer::~MultithreadedServer() {
     stop();
 }
 
-void MultithreadedServer::start() {
+void MultithreadedServer::start(uint16_t port) {
     if (m_running) return;
 
     m_running = true;
@@ -28,7 +30,7 @@ void MultithreadedServer::start() {
         });
     }
 
-    qDebug() << "Многопоточный сервер запущен на порту" << m_acceptor.local_endpoint().port();
+    qDebug() << "Multithreaded server started on port" << m_acceptor.local_endpoint().port();
 }
 
 void MultithreadedServer::stop() {
@@ -44,45 +46,16 @@ void MultithreadedServer::stop() {
     }
     m_threads.clear();
 
-    {
-        std::lock_guard<std::mutex> lock(m_clients_mutex);
-        m_clients.clear();
-        m_usernames.clear();
-    }
+    m_clientManager->clear();
 
-    qDebug() << "Сервер остановлен";
+    qDebug() << "Server stopped";
 }
 
 void MultithreadedServer::accept_connections() {
     auto socket = std::make_shared<boost::asio::ip::tcp::socket>(m_io_context);
     m_acceptor.async_accept(*socket, [this, socket](const boost::system::error_code& error) {
         if (!error) {
-            QUuid clientId = QUuid::createUuid();
-            {
-                std::lock_guard<std::mutex> lock(m_clients_mutex);
-                m_clients[clientId] = socket;
-                m_usernames[clientId] = "Guest";
-            }
-
-            emit newConnection(clientId);
-            qDebug() << "Новое подключение, UUID:" << clientId;
-
-            auto buffer = std::make_shared<std::vector<char>>(1024);
-            socket->async_read_some(boost::asio::buffer(*buffer),
-                [this, socket, buffer, clientId](const boost::system::error_code& error, 
-                                               std::size_t bytes_transferred) {
-                    if (!error) {
-                        handle_read(socket, buffer);
-                    } else {
-                        {
-                            std::lock_guard<std::mutex> lock(m_clients_mutex);
-                            m_clients.erase(clientId);
-                            m_usernames.erase(clientId);
-                        }
-                        emit clientDisconnected(clientId);
-                        qDebug() << "Клиент отключился, UUID:" << clientId;
-                    }
-                });
+            handle_connection(socket);
         }
 
         if (m_running) {
@@ -91,70 +64,61 @@ void MultithreadedServer::accept_connections() {
     });
 }
 
+void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
+    QUuid clientId = QUuid::createUuid();
+    m_clientManager->addClient(clientId, std::make_unique<BoostAsioClientSession>(socket));
+
+    emit newConnection(clientId);
+    qDebug() << "New connection, UUID:" << clientId;
+
+    auto buffer = std::make_shared<std::vector<char>>(1024);
+    handle_read(socket, buffer);
+}
+
 void MultithreadedServer::handle_read(std::shared_ptr<boost::asio::ip::tcp::socket> socket,
                                      std::shared_ptr<std::vector<char>> buffer) {
-    QByteArray data(buffer->data(), static_cast<int>(buffer->size()));
-    QDataStream stream(data);
-
-    Message msg;
-    stream >> msg;
-
-    QUuid senderId;
-    {
-        std::lock_guard<std::mutex> lock(m_clients_mutex);
-        for (const auto& pair : m_clients) {
-            if (pair.second == socket) {
-                senderId = pair.first;
-                m_usernames[senderId] = msg.username;
-                break;
-            }
-        }
-    }
-
-    if (!senderId.isNull()) {
-        broadcast_message(msg.text, senderId, msg.username);
-    }
-
     socket->async_read_some(boost::asio::buffer(*buffer),
-        [this, socket, buffer](const boost::system::error_code& error, 
-                              std::size_t bytes_transferred) {
+        [this, socket, buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
             if (!error) {
-                handle_read(socket, buffer);
-            }
-        });
-}
+                QByteArray data(buffer->data(), static_cast<int>(bytes_transferred));
+                QDataStream stream(data);
 
-void MultithreadedServer::broadcast_message(std::string_view message, 
-                                           QUuid senderId, 
-                                           std::string_view username) {
-    std::string formatted_message = std::string(username) + ":" + std::string(message);
-    {
-        std::lock_guard<std::mutex> lock(m_clients_mutex);
-        for (const auto& pair : m_clients) {
-            if (pair.first != senderId) {
-                handle_write(pair.second, formatted_message);
-            }
-        }
-    }
+                Message msg;
+                stream >> msg;
 
-    emit messageReceived(std::string(message), senderId, std::string(username));
-}
-
-void MultithreadedServer::handle_write(std::shared_ptr<boost::asio::ip::tcp::socket> socket,
-                                      const std::string& message) {
-    boost::asio::async_write(*socket, boost::asio::buffer(message),
-        [this, socket](const boost::system::error_code& error, std::size_t) {
-            if (error) {
-                std::lock_guard<std::mutex> lock(m_clients_mutex);
-                for (auto it = m_clients.begin(); it != m_clients.end(); ++it) {
-                    if (it->second == socket) {
-                        QUuid clientId = it->first;
-                        m_clients.erase(it);
-                        m_usernames.erase(clientId);
-                        emit clientDisconnected(clientId);
-                        break;
+                QUuid senderId;
+                {
+                    std::lock_guard<std::mutex> lock(m_clients_mutex);
+                    for (const auto& pair : m_clientManager->getClients()) {
+                        auto* session = dynamic_cast<BoostAsioClientSession*>(pair.second.get());
+                        if (session && session->getSocket() == socket) {
+                            senderId = pair.first;
+                            break;
+                        }
                     }
                 }
+
+                if (!senderId.isNull()) {
+                    m_messageHandler->handleMessage(msg.text, senderId, msg.username);
+                    emit messageReceived(msg.text, senderId, msg.username);
+                }
+
+                handle_read(socket, buffer);
+            } else {
+                QUuid clientId;
+                {
+                    std::lock_guard<std::mutex> lock(m_clients_mutex);
+                    for (const auto& pair : m_clientManager->getClients()) {
+                        auto* session = dynamic_cast<BoostAsioClientSession*>(pair.second.get());
+                        if (session && session->getSocket() == socket) {
+                            clientId = pair.first;
+                            break;
+                        }
+                    }
+                }
+                m_clientManager->removeClient(clientId);
+                emit clientDisconnected(clientId);
+                qDebug() << "Client disconnected, UUID:" << clientId;
             }
         });
 }

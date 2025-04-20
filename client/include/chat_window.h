@@ -5,7 +5,7 @@
 #include <QPushButton>
 #include <memory>
 #include <string>
-#include "inetwork_client.h"
+#include "chat_controller.h"
 
 class IChatView {
 public:
@@ -20,7 +20,6 @@ class ChatWindow : public QMainWindow, public IChatView {
     Q_OBJECT
 public:
     explicit ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent = nullptr);
-    std::string username() const;
     
     void displayMessage(const std::string& sender, const std::string& message) override;
     void displaySystemMessage(const std::string& message) override;
@@ -37,6 +36,5 @@ private:
     std::unique_ptr<QListWidget> m_chatHistory;
     std::unique_ptr<QLineEdit> m_inputField;
     std::unique_ptr<QPushButton> m_sendButton;
-    std::unique_ptr<INetworkClient> m_networkClient;
-    std::string m_username;
+    std::unique_ptr<ChatController> m_controller;
 };

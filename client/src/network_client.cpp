@@ -1,5 +1,6 @@
 #include "network_client.h"
 #include "message.h"
+#include "auth_handler.h"
 #include <QDataStream>
 #include <QDebug>
 #include <QAbstractSocket>
@@ -12,6 +13,7 @@ NetworkClient::NetworkClient(QObject* parent) : QObject(parent) {
 void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, std::string_view username) {
     m_username = username;
     m_socket = std::make_unique<QTcpSocket>(this);
+    m_authHandler = std::make_unique<AuthHandler>(m_socket.get());
 
     connect(m_socket.get(), &QTcpSocket::connected, this, &NetworkClient::onConnected);
     connect(m_socket.get(), &QTcpSocket::readyRead, this, &NetworkClient::onReadyRead);
@@ -27,7 +29,7 @@ void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, s
 
 void NetworkClient::sendMessage(std::string_view message) {
     if (!m_socket || m_socket->state() != QAbstractSocket::ConnectedState) {
-        qDebug() << "Не подключен к серверу";
+        qDebug() << "Not connected to server";
         return;
     }
 
@@ -50,9 +52,8 @@ void NetworkClient::setDisconnectedCallback(const DisconnectedCallback& callback
 }
 
 void NetworkClient::onConnected() {
-    QDataStream stream(m_socket.get());
-    stream << QString::fromStdString(m_username);
-    qDebug() << "Подключено к серверу, отправлено имя:" << QString::fromStdString(m_username);
+    m_authHandler->sendUsername(m_username);
+    qDebug() << "Connected to server, sent username:" << QString::fromStdString(m_username);
 }
 
 void NetworkClient::onReadyRead() {

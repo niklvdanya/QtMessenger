@@ -1,33 +1,30 @@
 #include "chat_window.h"
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QDebug>
 #include <QInputDialog>
 #include <QRandomGenerator>
 #include <QDateTime>
 
 ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent) 
-    : QMainWindow(parent)
-    , m_networkClient(std::move(networkClient)) {
+    : QMainWindow(parent) {
     setupUi();
 
     bool ok;
-    m_username = QInputDialog::getText(this, "Введите имя", 
-                                       "Ваше имя:", QLineEdit::Normal, 
-                                       "User", &ok).toStdString();
-    if (!ok || m_username.empty()) {
-        m_username = "Guest_" + std::to_string(QRandomGenerator::global()->bounded(1000));
+    QString username = QInputDialog::getText(this, "Enter name", 
+                                             "Your name:", QLineEdit::Normal, 
+                                             "User", &ok);
+    if (!ok || username.isEmpty()) {
+        username = "Guest_" + QString::number(QRandomGenerator::global()->bounded(1000));
     }
 
+    m_controller = std::make_unique<ChatController>(std::move(networkClient), this);
+    m_controller->setUsername(username.toStdString());
+    
     connectSignals();
 }
 
-std::string ChatWindow::username() const {
-    return m_username;
-}
-
 void ChatWindow::displayMessage(const std::string& sender, const std::string& message) {
-    std::string displayName = (sender == m_username) ? "You" : sender;
+    std::string displayName = (sender == m_controller->username()) ? "You" : sender;
     m_chatHistory->addItem(QString::fromStdString(
         "[" + QDateTime::currentDateTime().toString("hh:mm:ss").toStdString() + "] " +
         displayName + ": " + message));
@@ -66,25 +63,9 @@ void ChatWindow::setupUi() {
 
 void ChatWindow::connectSignals() {
     connect(m_sendButton.get(), &QPushButton::clicked, this, &ChatWindow::sendMessage);
-    
-    m_networkClient->setMessageCallback([this](const std::string& sender, const std::string& message) {
-        displayMessage(sender, message);
-    });
-    
-    m_networkClient->setDisconnectedCallback([this]() {
-        displaySystemMessage("Отключено от сервера");
-    });
-
-    m_networkClient->connectToServer("127.0.0.1", 12345, m_username);
 }
 
 void ChatWindow::sendMessage() {
-    std::string message = getInputText();
-    if (!message.empty()) {
-        m_chatHistory->addItem(QString::fromStdString(
-            "[" + QDateTime::currentDateTime().toString("hh:mm:ss").toStdString() + "] You: " + message));
-        m_chatHistory->scrollToBottom();
-        m_networkClient->sendMessage(message);
-        clearInput();
-    }
+    m_controller->sendMessage(getInputText());
+    clearInput();
 }

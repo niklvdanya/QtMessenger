@@ -3,7 +3,10 @@
 #include <QDebug>
 
 AsyncTcpServer::AsyncTcpServer(QObject* parent) 
-    : QTcpServer(parent), m_running(false) {
+    : QTcpServer(parent), 
+      m_clientManager(std::make_shared<ClientManager>()),
+      m_messageHandler(std::make_unique<MessageHandler>(m_clientManager)),
+      m_running(false) {
     connect(this, &QTcpServer::newConnection, this, &AsyncTcpServer::onNewConnection);
 }
 
@@ -15,10 +18,10 @@ void AsyncTcpServer::start(uint16_t port) {
     if (m_running) return;
     
     if (!listen(QHostAddress::Any, port)) {
-        qDebug() << "Сервер не смог запуститься! Ошибка:" << errorString();
+        qDebug() << "Server failed to start! Error:" << errorString();
     } else {
         m_running = true;
-        qDebug() << "Сервер успешно запущен на порту" << port;
+        qDebug() << "Server started on port" << port;
     }
 }
 
@@ -27,30 +30,8 @@ void AsyncTcpServer::stop() {
     
     m_running = false;
     close();
-    m_clients.clear();
-    qDebug() << "Сервер остановлен";
-}
-
-void AsyncTcpServer::addClient(QUuid clientId, void* clientData) {
-}
-
-void AsyncTcpServer::removeClient(QUuid clientId) {
-    m_clients.erase(clientId);
-    qDebug() << "Клиент удален, UUID:" << clientId;
-}
-
-void AsyncTcpServer::broadcastMessage(const std::string& message, QUuid senderId, const std::string& username) {
-    for (const auto& pair : m_clients) {
-        if (pair.first != senderId) {
-            pair.second->sendMessage(username + ":" + message);
-        }
-    }
-}
-
-void AsyncTcpServer::handleMessage(const std::string& message, QUuid senderId, const std::string& username) {
-    qDebug() << "Обработка сообщения от" << senderId.toString() 
-             << "(" << QString::fromStdString(username) << "):" << QString::fromStdString(message);
-    broadcastMessage(message, senderId, username);
+    m_clientManager->clear();
+    qDebug() << "Server stopped";
 }
 
 void AsyncTcpServer::onNewConnection() {
@@ -59,26 +40,14 @@ void AsyncTcpServer::onNewConnection() {
     QUuid uuid = session->uuid();
     
     session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
-        this->handleMessage(message, senderId, username);
+        m_messageHandler->handleMessage(message, senderId, username);
     });
     
     session->setDisconnectCallback([this](QUuid clientId) {
-        this->removeClient(clientId);
+        m_clientManager->removeClient(clientId);
     });
     
-    m_clients.emplace(uuid, std::move(session));
-    qDebug() << "Новое подключение, UUID:" << uuid;
+    m_clientManager->addClient(uuid, std::move(session));
     
-    connect(dynamic_cast<ClientSession*>(m_clients[uuid].get()), &ClientSession::disconnected, 
-            this, &AsyncTcpServer::onClientDisconnected);
-    connect(dynamic_cast<ClientSession*>(m_clients[uuid].get()), &ClientSession::messageReceived,
-            this, &AsyncTcpServer::onMessageReceived);
-}
-
-void AsyncTcpServer::onClientDisconnected(QUuid uuid) {
-    removeClient(uuid);
-}
-
-void AsyncTcpServer::onMessageReceived(const std::string& message, QUuid senderId, const std::string& username) {
-    handleMessage(message, senderId, username);
+    qDebug() << "New connection, UUID:" << uuid;
 }

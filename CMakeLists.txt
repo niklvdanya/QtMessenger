@@ -27,6 +27,10 @@ add_executable(chat_server
     server/include/client_session.h
     server/include/client_session_interface.h
     server/include/iserver.h
+    server/src/client_manager.cpp
+    server/include/client_manager.h
+    server/src/message_handler.cpp
+    server/include/message_handler.h
 )
 target_include_directories(chat_server PRIVATE server/include common/include)
 target_link_libraries(chat_server PRIVATE common_lib Qt6::Core Qt6::Network)
@@ -40,6 +44,10 @@ add_executable(chat_client
     client/src/network_client_factory.cpp
     client/include/network_client_factory.h
     client/include/inetwork_client.h
+    client/src/chat_controller.cpp
+    client/include/chat_controller.h
+    client/src/auth_handler.cpp
+    client/include/auth_handler.h
 )
 target_include_directories(chat_client PRIVATE client/include common/include)
 target_link_libraries(chat_client PRIVATE common_lib Qt6::Core Qt6::Widgets Qt6::Network)

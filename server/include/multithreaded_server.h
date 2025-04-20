@@ -11,15 +11,18 @@
 #include <string>
 #include "message.h"
 #include "quuid_hash.h"
+#include "iserver.h"
+#include "client_manager.h"
+#include "message_handler.h"
 
-class MultithreadedServer : public QObject {
+class MultithreadedServer : public QObject, public IServer {
     Q_OBJECT
 public:
     explicit MultithreadedServer(unsigned short port, int thread_count = 4, QObject* parent = nullptr);
     ~MultithreadedServer() override;
 
-    void start();
-    void stop();
+    void start(uint16_t port) override;
+    void stop() override;
 
 signals:
     void newConnection(QUuid clientId);
@@ -31,15 +34,12 @@ private:
     void handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
     void handle_read(std::shared_ptr<boost::asio::ip::tcp::socket> socket, 
                      std::shared_ptr<std::vector<char>> buffer);
-    void handle_write(std::shared_ptr<boost::asio::ip::tcp::socket> socket,
-                      const std::string& message);
-    void broadcast_message(std::string_view message, QUuid senderId, std::string_view username);
 
     boost::asio::io_context m_io_context;
     boost::asio::ip::tcp::acceptor m_acceptor;
     std::vector<std::thread> m_threads;
-    std::unordered_map<QUuid, std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
-    std::unordered_map<QUuid, std::string> m_usernames;
+    std::shared_ptr<ClientManager> m_clientManager;
+    std::shared_ptr<MessageHandler> m_messageHandler;
     std::mutex m_clients_mutex;
     bool m_running;
 };
