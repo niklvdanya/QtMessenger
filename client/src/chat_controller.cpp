@@ -1,5 +1,6 @@
 #include "chat_controller.h"
 #include "chat_window.h"
+#include "network_client.h"
 
 ChatController::ChatController(std::unique_ptr<INetworkClient> networkClient, IChatView* view)
     : m_networkClient(std::move(networkClient)), m_view(view) {
@@ -29,4 +30,9 @@ void ChatController::setupNetworkCallbacks() {
     m_networkClient->setDisconnectedCallback([this]() {
         m_view->displaySystemMessage("Disconnected from server");
     });
+
+    if (auto* networkClient = dynamic_cast<NetworkClient*>(m_networkClient.get())) {
+        QObject::connect(networkClient, &NetworkClient::connectionStatusChanged,
+                        dynamic_cast<ChatWindow*>(m_view), &ChatWindow::updateConnectionStatus);
+    }
 }

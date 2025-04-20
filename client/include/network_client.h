@@ -23,10 +23,12 @@ public:
 signals:
     void messageReceived(const std::string& sender, const std::string& message);
     void disconnected();
+    void connectionStatusChanged(bool connected);
 
 private slots:
     void onConnected();
     void onReadyRead();
+    void onDisconnected(); 
 
 private:
     std::unique_ptr<QTcpSocket> m_socket;

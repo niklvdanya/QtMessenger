@@ -17,12 +17,7 @@ void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, s
 
     connect(m_socket.get(), &QTcpSocket::connected, this, &NetworkClient::onConnected);
     connect(m_socket.get(), &QTcpSocket::readyRead, this, &NetworkClient::onReadyRead);
-    connect(m_socket.get(), &QTcpSocket::disconnected, this, [this]() {
-        if (m_disconnectedCallback) {
-            m_disconnectedCallback();
-        }
-        emit disconnected();
-    });
+    connect(m_socket.get(), &QTcpSocket::disconnected, this, &NetworkClient::onDisconnected);
 
     m_socket->connectToHost(QString::fromStdString(std::string(host)), port);
 }
@@ -54,6 +49,7 @@ void NetworkClient::setDisconnectedCallback(const DisconnectedCallback& callback
 void NetworkClient::onConnected() {
     m_authHandler->sendUsername(m_username);
     qDebug() << "Connected to server, sent username:" << QString::fromStdString(m_username);
+    emit connectionStatusChanged(true); 
 }
 
 void NetworkClient::onReadyRead() {
@@ -64,4 +60,12 @@ void NetworkClient::onReadyRead() {
         m_messageCallback(msg.username, msg.text);
     }
     emit messageReceived(msg.username, msg.text);
+}
+
+void NetworkClient::onDisconnected() {
+    if (m_disconnectedCallback) {
+        m_disconnectedCallback();
+    }
+    emit disconnected();
+    emit connectionStatusChanged(false); 
 }

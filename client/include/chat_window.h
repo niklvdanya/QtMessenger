@@ -3,6 +3,7 @@
 #include <QListWidget>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QLabel>
 #include <memory>
 #include <string>
 #include "chat_controller.h"
@@ -26,15 +27,17 @@ public:
     std::string getInputText() override;
     void clearInput() override;
 
-private slots:
+public slots:
     void sendMessage();
-
+    void updateConnectionStatus(bool connected); 
 private:
     void setupUi();
     void connectSignals();
+    void applyStyles();
 
     std::unique_ptr<QListWidget> m_chatHistory;
     std::unique_ptr<QLineEdit> m_inputField;
     std::unique_ptr<QPushButton> m_sendButton;
+    std::unique_ptr<QLabel> m_statusLabel;
     std::unique_ptr<ChatController> m_controller;
 };
