@@ -18,6 +18,14 @@ std::string ClientSession::username() const {
     return m_username;
 }
 
+void ClientSession::setMessageCallback(const MessageCallback& callback) {
+    m_messageCallback = callback;
+}
+
+void ClientSession::setDisconnectCallback(const DisconnectCallback& callback) {
+    m_disconnectCallback = callback;
+}
+
 void ClientSession::sendMessage(const std::string& messageWithSender) {
     auto colonPos = messageWithSender.find(':');
     std::string username = messageWithSender.substr(0, colonPos);
@@ -54,10 +62,19 @@ void ClientSession::readMessage() {
     stream >> msg;
     qDebug() << "Получено сообщение от" << m_uuid << "(" 
              << QString::fromStdString(m_username) << "):" << QString::fromStdString(msg.text);
+    
+    if (m_messageCallback) {
+        m_messageCallback(msg.text, m_uuid, m_username);
+    }
+    
     emit messageReceived(msg.text, m_uuid, m_username);
 }
 
 void ClientSession::onDisconnected() {
+    if (m_disconnectCallback) {
+        m_disconnectCallback(m_uuid);
+    }
+    
     emit disconnected(m_uuid);
     deleteLater();
 }

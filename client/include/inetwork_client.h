@@ -1,19 +1,32 @@
 #pragma once
-#include <cstdint>      // Добавлено для uint16_t
+#include <cstdint>
 #include <functional>
 #include <string_view>
 
-class INetworkClient {
+class IMessageReceiver {
 public:
-    virtual ~INetworkClient() = default;
-    virtual void connectToServer(std::string_view host, std::uint16_t port, std::string_view username) = 0;
-    virtual void sendMessage(std::string_view message) = 0;
-
-    // Callback для получения сообщений
+    virtual ~IMessageReceiver() = default;
+    
     using MessageCallback = std::function<void(const std::string&, const std::string&)>;
     virtual void setMessageCallback(const MessageCallback& callback) = 0;
+};
 
-    // Callback для уведомления об отключении
+class IConnectionHandler {
+public:
+    virtual ~IConnectionHandler() = default;
+    
     using DisconnectedCallback = std::function<void()>;
     virtual void setDisconnectedCallback(const DisconnectedCallback& callback) = 0;
+    virtual void connectToServer(std::string_view host, std::uint16_t port, std::string_view username) = 0;
+};
+
+class IMessageSender {
+public:
+    virtual ~IMessageSender() = default;
+    virtual void sendMessage(std::string_view message) = 0;
+};
+
+class INetworkClient : public IMessageReceiver, public IConnectionHandler, public IMessageSender {
+public:
+    ~INetworkClient() override = default;
 };

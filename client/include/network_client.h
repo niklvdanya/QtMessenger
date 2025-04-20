@@ -1,3 +1,4 @@
+// network_client.h
 #pragma once
 #include "inetwork_client.h"
 #include <QObject>
@@ -12,11 +13,15 @@ public:
     explicit NetworkClient(QObject* parent = nullptr);
     ~NetworkClient() override = default;
 
+    // IConnectionHandler
     void connectToServer(std::string_view host, std::uint16_t port, std::string_view username) override;
-    void sendMessage(std::string_view message) override;
-
-    void setMessageCallback(const MessageCallback& callback) override;
     void setDisconnectedCallback(const DisconnectedCallback& callback) override;
+    
+    // IMessageSender
+    void sendMessage(std::string_view message) override;
+    
+    // IMessageReceiver
+    void setMessageCallback(const MessageCallback& callback) override;
 
 signals:
     void messageReceived(const std::string& sender, const std::string& message);

@@ -25,17 +25,11 @@ add_executable(chat_server
     server/include/async_tcp_server.h
     server/src/client_session.cpp
     server/include/client_session.h
+    server/include/client_session_interface.h
+    server/include/iserver.h
 )
 target_include_directories(chat_server PRIVATE server/include common/include)
 target_link_libraries(chat_server PRIVATE common_lib Qt6::Core Qt6::Network)
-
-add_executable(chat_server_mt
-    server/src/main_multithreaded.cpp
-    server/src/multithreaded_server.cpp
-    server/include/multithreaded_server.h
-)
-target_include_directories(chat_server_mt PRIVATE server/include common/include)
-target_link_libraries(chat_server_mt PRIVATE common_lib Qt6::Core Boost::system)
 
 add_executable(chat_client
     client/src/main.cpp
