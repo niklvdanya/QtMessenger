@@ -10,7 +10,7 @@
 
 ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent) 
     : QMainWindow(parent) {
-    setWindowTitle("Qt Messenger");
+    setWindowTitle("Qt Chat App");
     setMinimumSize(600, 400); 
     setupUi();
     applyStyles();
@@ -64,6 +64,7 @@ void ChatWindow::setupUi() {
     m_chatHistory = std::make_unique<QListWidget>(this);
     m_inputField = std::make_unique<QLineEdit>(this);
     m_sendButton = std::make_unique<QPushButton>("Send", this);
+    m_emojiButton = std::make_unique<QPushButton>("😊", this);
     m_statusLabel = std::make_unique<QLabel>("Disconnected", this);
 
     auto* centralWidget = new QWidget(this);
@@ -71,6 +72,7 @@ void ChatWindow::setupUi() {
     auto* mainLayout = new QVBoxLayout(centralWidget);
     
     auto* inputLayout = new QHBoxLayout();
+    inputLayout->addWidget(m_emojiButton.get());
     inputLayout->addWidget(m_inputField.get());
     inputLayout->addWidget(m_sendButton.get());
 
@@ -124,17 +126,32 @@ void ChatWindow::applyStyles() {
         QPushButton:pressed {
             background-color: #004e8c;
         }
+        QPushButton#emojiButton {
+            background-color: #ffffff;
+            color: black;
+            font-size: 20px;
+            padding: 8px;
+            min-width: 40px;
+        }
+        QPushButton#emojiButton:hover {
+            background-color: #e0e0e0;
+        }
+        QPushButton#emojiButton:pressed {
+            background-color: #d0d0d0;
+        }
         QLabel {
             font-size: 12px;
             color: #666666;
         }
     )");
 
+    m_emojiButton->setObjectName("emojiButton"); 
 }
 
 void ChatWindow::connectSignals() {
     connect(m_sendButton.get(), &QPushButton::clicked, this, &ChatWindow::sendMessage);
     connect(m_inputField.get(), &QLineEdit::returnPressed, this, &ChatWindow::sendMessage);
+    connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);  
 }
 
 void ChatWindow::sendMessage() {
@@ -148,4 +165,14 @@ void ChatWindow::sendMessage() {
 void ChatWindow::updateConnectionStatus(bool connected) {
     m_statusLabel->setText(connected ? "Connected" : "Disconnected");
     m_statusLabel->setStyleSheet(connected ? "color: #28a745;" : "color: #dc3545;");
+}
+
+void ChatWindow::openEmojiWindow() {
+    EmojiWindow* emojiWindow = new EmojiWindow(this);
+    connect(emojiWindow, &EmojiWindow::emojiSelected, this, &ChatWindow::insertEmoji);
+    emojiWindow->exec(); 
+}
+
+void ChatWindow::insertEmoji(const QString& emoji) {
+    m_inputField->insert(emoji); 
 }

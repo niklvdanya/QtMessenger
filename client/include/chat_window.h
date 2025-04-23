@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include "chat_controller.h"
+#include "emoji_window.h"
 
 class IChatView {
 public:
@@ -29,7 +30,10 @@ public:
 
 public slots:
     void sendMessage();
-    void updateConnectionStatus(bool connected); 
+    void updateConnectionStatus(bool connected);
+    void openEmojiWindow();
+    void insertEmoji(const QString& emoji);
+
 private:
     void setupUi();
     void connectSignals();
@@ -38,6 +42,7 @@ private:
     std::unique_ptr<QListWidget> m_chatHistory;
     std::unique_ptr<QLineEdit> m_inputField;
     std::unique_ptr<QPushButton> m_sendButton;
+    std::unique_ptr<QPushButton> m_emojiButton; 
     std::unique_ptr<QLabel> m_statusLabel;
     std::unique_ptr<ChatController> m_controller;
 };

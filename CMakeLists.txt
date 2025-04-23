@@ -48,6 +48,8 @@ add_executable(chat_client
     client/include/chat_controller.h
     client/src/auth_handler.cpp
     client/include/auth_handler.h
+    client/src/emoji_window.cpp  
+    client/include/emoji_window.h  
 )
 target_include_directories(chat_client PRIVATE client/include common/include)
 target_link_libraries(chat_client PRIVATE common_lib Qt6::Core Qt6::Widgets Qt6::Network)
