@@ -10,6 +10,7 @@
 
 ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent) 
     : QMainWindow(parent) {
+    setWindowTitle("Qt Messenger");
     setMinimumSize(600, 400); 
     setupUi();
     applyStyles();
