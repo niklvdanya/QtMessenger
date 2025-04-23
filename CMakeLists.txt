@@ -19,22 +19,6 @@ add_library(common_lib STATIC
 target_include_directories(common_lib PUBLIC common/include)
 target_link_libraries(common_lib PUBLIC Qt6::Core)
 
-add_executable(chat_server
-    server/src/main.cpp
-    server/src/async_tcp_server.cpp
-    server/include/async_tcp_server.h
-    server/src/client_session.cpp
-    server/include/client_session.h
-    server/include/client_session_interface.h
-    server/include/iserver.h
-    server/src/client_manager.cpp
-    server/include/client_manager.h
-    server/src/message_handler.cpp
-    server/include/message_handler.h
-)
-target_include_directories(chat_server PRIVATE server/include common/include)
-target_link_libraries(chat_server PRIVATE common_lib Qt6::Core Qt6::Network)
-
 add_executable(chat_server_mt
     server/src/main_multithreaded.cpp
     server/src/multithreaded_server.cpp
