@@ -1,2 +1,2 @@
-# qt_chat_app
+# QtMessenger
 Simple C++/Qt chat application with client-server architecture
