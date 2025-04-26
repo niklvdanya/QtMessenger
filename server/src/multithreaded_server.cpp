@@ -65,14 +65,25 @@ void MultithreadedServer::accept_connections() {
 }
 
 void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
-    QUuid clientId = QUuid::createUuid();
-    m_clientManager->addClient(clientId, std::make_unique<BoostAsioClientSession>(socket));
+    auto session = std::make_unique<BoostAsioClientSession>(socket);
+    QUuid clientId = session->uuid();
+
+    // Устанавливаем обработчики для сообщений и отключений
+    session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
+        m_messageHandler->handleMessage(message, senderId, username);
+        emit messageReceived(message, senderId, username);
+    });
+
+    session->setDisconnectCallback([this](QUuid clientId) {
+        m_clientManager->removeClient(clientId);
+        emit clientDisconnected(clientId);
+        qDebug() << "Client disconnected, UUID:" << clientId;
+    });
+
+    m_clientManager->addClient(clientId, std::move(session));
 
     emit newConnection(clientId);
     qDebug() << "New connection, UUID:" << clientId;
-
-    auto buffer = std::make_shared<std::vector<char>>(1024);
-    handle_read(socket, buffer);
 }
 
 void MultithreadedServer::handle_read(std::shared_ptr<boost::asio::ip::tcp::socket> socket,
@@ -85,6 +96,9 @@ void MultithreadedServer::handle_read(std::shared_ptr<boost::asio::ip::tcp::sock
 
                 Message msg;
                 stream >> msg;
+
+                qDebug() << "Received message from socket:" << QString::fromStdString(msg.username)
+                         << "Text:" << QString::fromStdString(msg.text);
 
                 QUuid senderId;
                 {
@@ -99,8 +113,12 @@ void MultithreadedServer::handle_read(std::shared_ptr<boost::asio::ip::tcp::sock
                 }
 
                 if (!senderId.isNull()) {
+                    std::string fullMessage = msg.username + ":" + msg.text;
+                    qDebug() << "Broadcasting message:" << QString::fromStdString(fullMessage);
                     m_messageHandler->handleMessage(msg.text, senderId, msg.username);
                     emit messageReceived(msg.text, senderId, msg.username);
+                } else {
+                    qDebug() << "No sender found for socket";
                 }
 
                 handle_read(socket, buffer);

@@ -15,10 +15,18 @@ public:
     void setDisconnectCallback(const DisconnectCallback& callback) override;
     std::shared_ptr<boost::asio::ip::tcp::socket> getSocket() const;
 
+    void readUsername();
+
 private:
+    void handleReadUsername(const boost::system::error_code& error, std::size_t bytes_transferred, 
+                           std::shared_ptr<std::vector<char>> buffer);
+    void handleReadMessage(const boost::system::error_code& error, std::size_t bytes_transferred, 
+                          std::shared_ptr<std::vector<char>> buffer);
+
     std::shared_ptr<boost::asio::ip::tcp::socket> m_socket;
     QUuid m_uuid;
     std::string m_username;
     MessageCallback m_messageCallback;
     DisconnectCallback m_disconnectCallback;
+    bool m_usernameRead{false};
 };
