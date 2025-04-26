@@ -9,7 +9,6 @@ ChatController::ChatController(std::unique_ptr<INetworkClient> networkClient, IC
 
 void ChatController::sendMessage(const std::string& message) {
     if (!message.empty()) {
-        m_view->displayMessage(m_username, message);
         m_networkClient->sendMessage(message);
     }
 }
@@ -25,7 +24,6 @@ std::string ChatController::username() const {
 
 void ChatController::setupNetworkCallbacks() {
     m_networkClient->setMessageCallback([this](const std::string& sender, const std::string& message) {
-        m_view->displayMessage(sender, message);
     });
     m_networkClient->setDisconnectedCallback([this]() {
         m_view->displaySystemMessage("Disconnected from server");
@@ -35,4 +33,8 @@ void ChatController::setupNetworkCallbacks() {
         QObject::connect(networkClient, &NetworkClient::connectionStatusChanged,
                         dynamic_cast<ChatWindow*>(m_view), &ChatWindow::updateConnectionStatus);
     }
+}
+
+NetworkClient* ChatController::getNetworkClient() const {
+    return dynamic_cast<NetworkClient*>(m_networkClient.get());
 }

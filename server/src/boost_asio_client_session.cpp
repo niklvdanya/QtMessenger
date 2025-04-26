@@ -7,7 +7,7 @@
 
 BoostAsioClientSession::BoostAsioClientSession(std::shared_ptr<boost::asio::ip::tcp::socket> socket)
     : m_socket(socket), m_uuid(QUuid::createUuid()), m_username("Guest") {
-    readUsername(); 
+    readUsername();
 }
 
 QUuid BoostAsioClientSession::uuid() const noexcept {
@@ -39,7 +39,21 @@ void BoostAsioClientSession::sendMessage(const std::string& message) {
 
     auto data = std::make_shared<std::vector<char>>(buffer.begin(), buffer.end());
     boost::asio::async_write(*m_socket, boost::asio::buffer(*data),
-        [data](const boost::system::error_code& error, std::size_t ) {
+        [data](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
+            if (error) {
+                qDebug() << "Error sending message:" << QString::fromStdString(error.message());
+            }
+        });
+}
+
+void BoostAsioClientSession::sendMessage(const Message& msg) {
+    QByteArray buffer;
+    QDataStream stream(&buffer, QIODevice::WriteOnly);
+    stream << msg;
+
+    auto data = std::make_shared<std::vector<char>>(buffer.begin(), buffer.end());
+    boost::asio::async_write(*m_socket, boost::asio::buffer(*data),
+        [data](const boost::system::error_code& error, std::size_t /*bytes_transferred*/) {
             if (error) {
                 qDebug() << "Error sending message:" << QString::fromStdString(error.message());
             }
@@ -52,6 +66,10 @@ void BoostAsioClientSession::setMessageCallback(const MessageCallback& callback)
 
 void BoostAsioClientSession::setDisconnectCallback(const DisconnectCallback& callback) {
     m_disconnectCallback = callback;
+}
+
+void BoostAsioClientSession::setReadyCallback(const ReadyCallback& callback) {
+    m_readyCallback = callback;
 }
 
 std::shared_ptr<boost::asio::ip::tcp::socket> BoostAsioClientSession::getSocket() const {
@@ -87,6 +105,10 @@ void BoostAsioClientSession::handleReadUsername(const boost::system::error_code&
         m_usernameRead = true;
         qDebug() << "Received username:" << QString::fromStdString(m_username) 
                  << "for client" << m_uuid;
+
+        if (m_readyCallback) {
+            m_readyCallback();
+        }
 
         auto newBuffer = std::make_shared<std::vector<char>>(1024);
         m_socket->async_read_some(boost::asio::buffer(*newBuffer),

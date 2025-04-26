@@ -29,14 +29,14 @@ ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* p
     connectSignals();
 }
 
-void ChatWindow::displayMessage(const std::string& sender, const std::string& message) {
-    std::string displayName = (sender == m_controller->username()) ? "You" : sender;
+void ChatWindow::handleMessageReceived(const Message& msg) {
+    std::string displayName = (msg.username == m_controller->username()) ? "You" : msg.username;
     QString formattedMessage = QString::fromStdString(
-        "[" + QDateTime::currentDateTime().toString("hh:mm:ss").toStdString() + "] " +
-        displayName + ": " + message);
+        "[" + msg.timestamp.toString("hh:mm:ss").toStdString() + "] " +
+        displayName + ": " + msg.text);
 
     auto* item = new QListWidgetItem(formattedMessage, m_chatHistory.get());
-    if (sender == m_controller->username()) {
+    if (msg.username == m_controller->username()) {
         item->setBackground(QColor(200, 230, 255)); 
     }
     m_chatHistory->addItem(item);
@@ -151,7 +151,12 @@ void ChatWindow::applyStyles() {
 void ChatWindow::connectSignals() {
     connect(m_sendButton.get(), &QPushButton::clicked, this, &ChatWindow::sendMessage);
     connect(m_inputField.get(), &QLineEdit::returnPressed, this, &ChatWindow::sendMessage);
-    connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);  
+    connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);
+
+    if (auto* networkClient = m_controller->getNetworkClient()) {
+        connect(networkClient, &NetworkClient::messageReceived,
+                this, &ChatWindow::handleMessageReceived);
+    }
 }
 
 void ChatWindow::sendMessage() {

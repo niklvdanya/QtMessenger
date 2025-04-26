@@ -43,6 +43,13 @@ void ClientSession::sendMessage(const std::string& messageWithSender) {
              << QString::fromStdString(m_username) << "):" << QString::fromStdString(message);
 }
 
+void ClientSession::sendMessage(const Message& msg) {
+    QDataStream stream(m_socket.get());
+    stream << msg;
+    qDebug() << "Отправлено сообщение клиенту" << m_uuid << "(" 
+             << QString::fromStdString(m_username) << "):" << QString::fromStdString(msg.text);
+}
+
 void ClientSession::readUsername() {
     QDataStream stream(m_socket.get());
     QString username;

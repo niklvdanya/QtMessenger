@@ -1,6 +1,5 @@
 #include "network_client.h"
 #include "message.h"
-#include "auth_handler.h"
 #include <QDataStream>
 #include <QDebug>
 #include <QAbstractSocket>
@@ -49,7 +48,7 @@ void NetworkClient::setDisconnectedCallback(const DisconnectedCallback& callback
 void NetworkClient::onConnected() {
     m_authHandler->sendUsername(m_username);
     qDebug() << "Connected to server, sent username:" << QString::fromStdString(m_username);
-    emit connectionStatusChanged(true); 
+    emit connectionStatusChanged(true);
 }
 
 void NetworkClient::onReadyRead() {
@@ -59,7 +58,7 @@ void NetworkClient::onReadyRead() {
     if (m_messageCallback) {
         m_messageCallback(msg.username, msg.text);
     }
-    emit messageReceived(msg.username, msg.text);
+    emit messageReceived(msg);
 }
 
 void NetworkClient::onDisconnected() {
@@ -67,5 +66,5 @@ void NetworkClient::onDisconnected() {
         m_disconnectedCallback();
     }
     emit disconnected();
-    emit connectionStatusChanged(false); 
+    emit connectionStatusChanged(false);
 }

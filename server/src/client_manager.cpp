@@ -8,10 +8,6 @@ ClientManager::ClientManager() {
 void ClientManager::addClient(QUuid clientId, std::unique_ptr<IClientSession> client) {
     m_clients.emplace(clientId, std::move(client));
     qDebug() << "Client added, UUID:" << clientId;
-
-    for (const auto& msg : m_chatHistory) {
-        m_clients[clientId]->sendMessage(msg.username + ":" + msg.text);
-    }
 }
 
 void ClientManager::removeClient(QUuid clientId) {
@@ -27,9 +23,7 @@ void ClientManager::broadcastMessage(const std::string& message, QUuid senderId,
     msg.timestamp = QDateTime::currentDateTime();
     addMessage(msg);
     for (const auto& pair : m_clients) {
-        if (pair.first != senderId) {
-            pair.second->sendMessage(username + ":" + message);
-        }
+        pair.second->sendMessage(msg);
     }
 }
 

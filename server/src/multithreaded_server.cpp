@@ -68,7 +68,6 @@ void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp
     auto session = std::make_unique<BoostAsioClientSession>(socket);
     QUuid clientId = session->uuid();
 
-    // Устанавливаем обработчики для сообщений и отключений
     session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
         m_messageHandler->handleMessage(message, senderId, username);
         emit messageReceived(message, senderId, username);
@@ -80,63 +79,19 @@ void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp
         qDebug() << "Client disconnected, UUID:" << clientId;
     });
 
+    session->setReadyCallback([this, clientId]() {
+        const auto& history = m_clientManager->getChatHistory();
+        auto* clientSession = dynamic_cast<BoostAsioClientSession*>(
+            m_clientManager->getClients().at(clientId).get());
+        if (clientSession) {
+            for (const auto& msg : history) {
+                clientSession->sendMessage(msg);
+            }
+        }
+    });
+
     m_clientManager->addClient(clientId, std::move(session));
 
     emit newConnection(clientId);
     qDebug() << "New connection, UUID:" << clientId;
-}
-
-void MultithreadedServer::handle_read(std::shared_ptr<boost::asio::ip::tcp::socket> socket,
-                                     std::shared_ptr<std::vector<char>> buffer) {
-    socket->async_read_some(boost::asio::buffer(*buffer),
-        [this, socket, buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
-            if (!error) {
-                QByteArray data(buffer->data(), static_cast<int>(bytes_transferred));
-                QDataStream stream(data);
-
-                Message msg;
-                stream >> msg;
-
-                qDebug() << "Received message from socket:" << QString::fromStdString(msg.username)
-                         << "Text:" << QString::fromStdString(msg.text);
-
-                QUuid senderId;
-                {
-                    std::lock_guard<std::mutex> lock(m_clients_mutex);
-                    for (const auto& pair : m_clientManager->getClients()) {
-                        auto* session = dynamic_cast<BoostAsioClientSession*>(pair.second.get());
-                        if (session && session->getSocket() == socket) {
-                            senderId = pair.first;
-                            break;
-                        }
-                    }
-                }
-
-                if (!senderId.isNull()) {
-                    std::string fullMessage = msg.username + ":" + msg.text;
-                    qDebug() << "Broadcasting message:" << QString::fromStdString(fullMessage);
-                    m_messageHandler->handleMessage(msg.text, senderId, msg.username);
-                    emit messageReceived(msg.text, senderId, msg.username);
-                } else {
-                    qDebug() << "No sender found for socket";
-                }
-
-                handle_read(socket, buffer);
-            } else {
-                QUuid clientId;
-                {
-                    std::lock_guard<std::mutex> lock(m_clients_mutex);
-                    for (const auto& pair : m_clientManager->getClients()) {
-                        auto* session = dynamic_cast<BoostAsioClientSession*>(pair.second.get());
-                        if (session && session->getSocket() == socket) {
-                            clientId = pair.first;
-                            break;
-                        }
-                    }
-                }
-                m_clientManager->removeClient(clientId);
-                emit clientDisconnected(clientId);
-                qDebug() << "Client disconnected, UUID:" << clientId;
-            }
-        });
 }

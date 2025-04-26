@@ -14,6 +14,7 @@ public:
     QUuid uuid() const noexcept override;
     std::string username() const override;
     void sendMessage(const std::string& message) override;
+    void sendMessage(const Message& msg) override; 
     void setMessageCallback(const MessageCallback& callback) override;
     void setDisconnectCallback(const DisconnectCallback& callback) override;
 

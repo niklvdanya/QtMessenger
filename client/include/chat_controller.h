@@ -1,5 +1,6 @@
 #pragma once
 #include "inetwork_client.h"
+#include "network_client.h"
 #include <memory>
 #include <string>
 
@@ -11,7 +12,7 @@ public:
     void sendMessage(const std::string& message);
     void setUsername(const std::string& username);
     std::string username() const;
-
+    NetworkClient* getNetworkClient() const;
 private:
     void setupNetworkCallbacks();
     std::unique_ptr<INetworkClient> m_networkClient;

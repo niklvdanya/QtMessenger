@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include "message.h"
 
 class AuthHandler;
 
@@ -21,7 +22,7 @@ public:
     void setMessageCallback(const MessageCallback& callback) override;
 
 signals:
-    void messageReceived(const std::string& sender, const std::string& message);
+    void messageReceived(const Message& msg); // Изменяем сигнал, чтобы передавать объект Message
     void disconnected();
     void connectionStatusChanged(bool connected);
 
