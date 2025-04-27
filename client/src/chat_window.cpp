@@ -21,6 +21,7 @@ ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* p
 
 void ChatWindow::handleMessageReceived(const Message& msg) {
     std::string displayName = (msg.username == m_controller->username()) ? "You" : msg.username;
+
     QString formattedMessage = QString::fromStdString(
         "[" + msg.timestamp.toString("hh:mm:ss").toStdString() + "] " +
         displayName + ": " + msg.text);
@@ -29,6 +30,7 @@ void ChatWindow::handleMessageReceived(const Message& msg) {
     if (msg.username == m_controller->username()) {
         item->setBackground(QColor(200, 230, 255)); 
     }
+    
     m_chatHistory->addItem(item);
     m_chatHistory->scrollToBottom();
 }
@@ -146,6 +148,8 @@ void ChatWindow::connectSignals() {
     if (auto* networkClient = m_controller->getNetworkClient()) {
         connect(networkClient, &NetworkClient::messageReceived,
                 this, &ChatWindow::handleMessageReceived);
+        connect(networkClient, &NetworkClient::connectionStatusChanged,
+                this, &ChatWindow::updateConnectionStatus);
     }
 }
 

@@ -1,18 +1,36 @@
 #include "client_manager.h"
 #include <QDebug>
+#include <thread>
+#include <chrono>
 
 ClientManager::ClientManager() {
     m_chatHistory.reserve(MAX_HISTORY_SIZE);
 }
 
 void ClientManager::addClient(QUuid clientId, std::unique_ptr<IClientSession> client) {
-    m_clients.emplace(clientId, std::move(client));
     qDebug() << "Client added, UUID:" << clientId;
+    m_clients.emplace(clientId, std::move(client));
+    auto* sessionPtr = m_clients.at(clientId).get();
+    
+    if (m_chatHistory.empty()) {
+        qDebug() << "No chat history to send";
+        return;
+    }
+
+    for (const auto& msg : m_chatHistory) {
+        sessionPtr->sendMessage(msg);
+        qDebug() << "Sent history message from" << QString::fromStdString(msg.username) 
+                 << " at " << msg.timestamp.toString("hh:mm:ss")
+                 << " - Text: " << QString::fromStdString(msg.text);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    
+    qDebug() << "Finished sending chat history to client" << clientId;
 }
 
 void ClientManager::removeClient(QUuid clientId) {
+    qDebug() << "Removing client, UUID:" << clientId;
     m_clients.erase(clientId);
-    qDebug() << "Client removed, UUID:" << clientId;
 }
 
 void ClientManager::broadcastMessage(const std::string& message, QUuid senderId, const std::string& username) {

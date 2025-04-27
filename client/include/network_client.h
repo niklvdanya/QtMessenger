@@ -33,11 +33,13 @@ private slots:
     void onDisconnected(); 
 
 private:
+    void processBuffer();
+
     std::unique_ptr<QTcpSocket> m_socket;
     std::unique_ptr<AuthHandler> m_authHandler;
     std::string m_username;
     std::string m_password;
     MessageCallback m_messageCallback;
     DisconnectedCallback m_disconnectedCallback;
-    
+    QByteArray m_receivedBuffer;
 };

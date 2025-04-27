@@ -18,30 +18,25 @@ void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, s
     connect(m_socket.get(), &QTcpSocket::connected, this, &NetworkClient::onConnected);
     connect(m_socket.get(), &QTcpSocket::readyRead, this, &NetworkClient::onReadyRead);
     connect(m_socket.get(), &QTcpSocket::disconnected, this, &NetworkClient::onDisconnected);
+
+    connect(m_socket.get(), &QAbstractSocket::errorOccurred, this, [this](QAbstractSocket::SocketError error) {
+        qDebug() << "Socket error:" << m_socket->errorString() << "(" << error << ")";
+    });
     
     qDebug() << "Connecting to server" << QString::fromStdString(std::string(host)) << ":" << port;
     qDebug() << "With username:" << QString::fromStdString(std::string(username));
-    qDebug() << "Password length:" << password.length();
     
     m_socket->connectToHost(QString::fromStdString(std::string(host)), port);
 }
 
 void NetworkClient::onConnected() {
     qDebug() << "Connected to server, sending credentials...";
-    
-    // Отправляем оба значения в одном потоке данных
+    QString usernameStr = QString::fromStdString(m_username);
+    QString passwordStr = QString::fromStdString(m_password);
     QByteArray block;
     QDataStream out(&block, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_0);
-    
-    // Отправляем имя пользователя и пароль в одном сообщении
-    out << QString::fromStdString(m_username) << QString::fromStdString(m_password);
-    
-    qDebug() << "Sending credentials - username:" << QString::fromStdString(m_username) 
-             << ", password length:" << m_password.length();
-    
-    m_socket->write(block);
-    m_socket->flush();
+    out << usernameStr << passwordStr;
     
     emit connectionStatusChanged(true);
 }
@@ -63,10 +58,11 @@ void NetworkClient::sendMessage(std::string_view message) {
     out.setVersion(QDataStream::Qt_6_0);
     out << msg;
     
-    m_socket->write(block);
+    qint64 bytesWritten = m_socket->write(block);
     m_socket->flush();
     
-    qDebug() << "Sent message to server:" << QString::fromStdString(std::string(message));
+    qDebug() << "Sent message to server (" << bytesWritten << " bytes): " 
+             << QString::fromStdString(std::string(message));
 }
 
 void NetworkClient::setMessageCallback(const MessageCallback& callback) {
@@ -78,20 +74,34 @@ void NetworkClient::setDisconnectedCallback(const DisconnectedCallback& callback
 }
 
 void NetworkClient::onReadyRead() {
-    QDataStream in(m_socket.get());
-    in.setVersion(QDataStream::Qt_6_0);
-    
-    Message msg;
-    in >> msg;
-    
-    qDebug() << "Received message from server, username:" 
-             << QString::fromStdString(msg.username) 
-             << ", text:" << QString::fromStdString(msg.text);
-             
-    if (m_messageCallback) {
-        m_messageCallback(msg.username, msg.text);
+    QByteArray receivedData = m_socket->readAll();
+    m_receivedBuffer.append(receivedData);
+    processBuffer();
+}
+
+void NetworkClient::processBuffer() {
+    QDataStream stream(&m_receivedBuffer, QIODevice::ReadOnly);
+    stream.setVersion(QDataStream::Qt_6_0);
+
+    qint64 startPos = stream.device()->pos();
+    while (!stream.atEnd()) {
+        qint64 currentPos = stream.device()->pos();
+        Message msg;
+        stream >> msg;
+        if (stream.status() != QDataStream::Ok) {
+            stream.device()->seek(currentPos);
+            break;
+        }
+ 
+        emit messageReceived(msg);
+        if (m_messageCallback) {
+            m_messageCallback(msg.username, msg.text);
+        }
     }
-    emit messageReceived(msg);
+    qint64 processedBytes = stream.device()->pos() - startPos;
+    if (processedBytes > 0) {
+        m_receivedBuffer.remove(0, processedBytes);
+    }
 }
 
 void NetworkClient::onDisconnected() {

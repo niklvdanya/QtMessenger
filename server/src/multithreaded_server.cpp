@@ -70,82 +70,72 @@ void MultithreadedServer::accept_connections() {
     });
 }
 
-void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
-    auto session = std::make_unique<BoostAsioClientSession>(socket, nullptr);
-    QUuid clientId = session->uuid();
-
-    session->setReadyCallback([this, clientId]() {
-        const auto& history = m_clientManager->getChatHistory();
-        auto* clientSession = dynamic_cast<BoostAsioClientSession*>(
-            m_clientManager->getClients().at(clientId).get());
-        if (clientSession) {
-            for (const auto& msg : history) {
-                clientSession->sendMessage(msg);
-            }
-        }
-    });
+class SharedSessionWrapper : public IClientSession {
+public:
+    explicit SharedSessionWrapper(std::shared_ptr<BoostAsioClientSession> session) : m_session(session) {}
     
+    QUuid uuid() const noexcept override { return m_session->uuid(); }
+    std::string username() const override { return m_session->username(); }
+    void sendMessage(const std::string& message) override { m_session->sendMessage(message); }
+    void sendMessage(const Message& msg) override { m_session->sendMessage(msg); }
+    void setMessageCallback(const MessageCallback& callback) override { m_session->setMessageCallback(callback); }
+    void setDisconnectCallback(const DisconnectCallback& callback) override { m_session->setDisconnectCallback(callback); }
+    
+private:
+    std::shared_ptr<BoostAsioClientSession> m_session;
+};
+
+void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
+    auto session = std::make_shared<BoostAsioClientSession>(socket, nullptr);
+    QUuid clientId = session->uuid();
     session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
         m_messageHandler->handleMessage(message, senderId, username);
         emit messageReceived(message, senderId, username);
     });
 
-    session->setDisconnectCallback([this](QUuid clientId) {
+    session->setDisconnectCallback([this, clientId](QUuid) {
         m_clientManager->removeClient(clientId);
         emit clientDisconnected(clientId);
         qDebug() << "Client disconnected, UUID:" << clientId;
     });
-
-    m_clientManager->addClient(clientId, std::move(session));
-    emit newConnection(clientId);
-    qDebug() << "New connection, UUID:" << clientId;
-
-    auto* sessionPtr = dynamic_cast<BoostAsioClientSession*>(m_clientManager->getClients().at(clientId).get());
     auto buffer = std::make_shared<std::vector<char>>(1024);
-
     socket->async_read_some(
         boost::asio::buffer(*buffer),
-        [this, socket, buffer, clientId, sessionPtr](const boost::system::error_code& error, std::size_t bytes_transferred) {
+        [this, socket, buffer, clientId, session](const boost::system::error_code& error, std::size_t bytes_transferred) {
             if (error) {
                 qDebug() << "Error reading credentials:" << QString::fromStdString(error.message());
-                m_clientManager->removeClient(clientId);
                 return;
             }
             
             try {
-        
                 QByteArray rawData(buffer->data(), static_cast<int>(bytes_transferred));
                 QDataStream stream(&rawData, QIODevice::ReadOnly);
                 stream.setVersion(QDataStream::Qt_6_0);
                 
                 QString username, password;
                 stream >> username >> password;
-                
-                if (username.isEmpty() || password.isEmpty()) {
-                    m_clientManager->removeClient(clientId);
-                    return;
-                }
-
                 bool validCredentials = acceptAllCredentials(username, password);
                 
                 if (validCredentials) {
-                    sessionPtr->m_username = username.toStdString();
-                    sessionPtr->m_credentialsValidated = true;
-
-                    if (sessionPtr->m_readyCallback) {
-                        sessionPtr->m_readyCallback();
-                    }
-                    auto messageBuffer = std::make_shared<std::vector<char>>(1024);
+                    qDebug() << "New User:" << username;
+                    session->m_username = username.toStdString();
+                    session->m_credentialsValidated = true;
+                    
+                    auto wrapper = std::make_unique<SharedSessionWrapper>(session);
+                    m_clientManager->addClient(clientId, std::move(wrapper));
+                    emit newConnection(clientId);
+                    qDebug() << "New connection added to client manager, UUID:" << clientId;
+                    
+                    auto messageBuffer = std::make_shared<std::vector<char>>(4096);
                     socket->async_read_some(boost::asio::buffer(*messageBuffer),
-                        [sessionPtr, messageBuffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
-                            sessionPtr->handleReadMessage(error, bytes_transferred, messageBuffer);
+                        [session, messageBuffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
+                            session->handleReadMessage(error, bytes_transferred, messageBuffer);
                         });
                 } else {
-                    m_clientManager->removeClient(clientId);
+                    qDebug() << "Wrong data for: " << username;
                 }
             } catch (const std::exception& e) {
-                qDebug() << "Ошибка при разборе учетных данных:" << e.what();
-                m_clientManager->removeClient(clientId);
+                qDebug() << "Error:" << e.what();
             }
         });
 }

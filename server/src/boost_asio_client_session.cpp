@@ -45,11 +45,14 @@ void BoostAsioClientSession::sendMessage(const Message& msg) {
 
     auto data = std::make_shared<std::vector<char>>(buffer.begin(), buffer.end());
     boost::asio::async_write(*m_socket, boost::asio::buffer(*data),
-        [this, data](const boost::system::error_code& error, std::size_t bytes_transferred) {
+        [this, data, msg](const boost::system::error_code& error, std::size_t bytes_transferred) {
             if (error) {
                 qDebug() << "Error sending message:" << QString::fromStdString(error.message());
             } else {
-                qDebug() << "Sent" << bytes_transferred << "bytes to client" << m_uuid;
+                qDebug() << "Sent" << bytes_transferred << "bytes to client" << m_uuid 
+                         << "- Message from:" << QString::fromStdString(msg.username)
+                         << "at" << msg.timestamp.toString("hh:mm:ss")
+                         << "- Text:" << QString::fromStdString(msg.text);
             }
         });
 }
