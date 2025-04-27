@@ -4,12 +4,13 @@
 #include <QDataStream>
 #include <QByteArray>
 
-MultithreadedServer::MultithreadedServer(unsigned short port, int thread_count, QObject* parent)
+MultithreadedServer::MultithreadedServer(unsigned short port, int thread_count, DatabaseManager* dbManager, QObject* parent)
     : QObject(parent),
       m_io_context(),
       m_acceptor(m_io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
       m_clientManager(std::make_shared<ClientManager>()),
       m_messageHandler(std::make_shared<MessageHandler>(m_clientManager)),
+      m_dbManager(dbManager),
       m_running(false) {
     m_threads.reserve(thread_count);
 }
@@ -65,9 +66,8 @@ void MultithreadedServer::accept_connections() {
 }
 
 void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
-    auto session = std::make_unique<BoostAsioClientSession>(socket);
+    auto session = std::make_unique<BoostAsioClientSession>(socket, m_dbManager);
     QUuid clientId = session->uuid();
-
     session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
         m_messageHandler->handleMessage(message, senderId, username);
         emit messageReceived(message, senderId, username);

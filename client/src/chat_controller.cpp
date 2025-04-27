@@ -15,7 +15,6 @@ void ChatController::sendMessage(const std::string& message) {
 
 void ChatController::setUsername(const std::string& username) {
     m_username = username;
-    m_networkClient->connectToServer("127.0.0.1", 12345, m_username);
 }
 
 std::string ChatController::username() const {

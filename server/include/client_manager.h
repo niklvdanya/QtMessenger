@@ -1,4 +1,3 @@
-// server/include/client_manager.h
 #pragma once
 #include <unordered_map>
 #include <memory>

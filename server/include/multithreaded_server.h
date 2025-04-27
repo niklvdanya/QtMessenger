@@ -14,11 +14,12 @@
 #include "iserver.h"
 #include "client_manager.h"
 #include "message_handler.h"
+#include "database_manager.h"
 
 class MultithreadedServer : public QObject, public IServer {
     Q_OBJECT
 public:
-    explicit MultithreadedServer(unsigned short port, int thread_count = 4, QObject* parent = nullptr);
+    explicit MultithreadedServer(unsigned short port, int thread_count = 4, DatabaseManager* dbManager = nullptr, QObject* parent = nullptr);
     ~MultithreadedServer() override;
 
     void start(uint16_t port) override;
@@ -37,6 +38,7 @@ private:
 
     boost::asio::io_context m_io_context;
     boost::asio::ip::tcp::acceptor m_acceptor;
+    DatabaseManager* m_dbManager;
     std::vector<std::thread> m_threads;
     std::shared_ptr<ClientManager> m_clientManager;
     std::shared_ptr<MessageHandler> m_messageHandler;
