@@ -18,7 +18,8 @@ public:
     using DisconnectedCallback = std::function<void()>;
     virtual void setDisconnectedCallback(const DisconnectedCallback& callback) = 0;
     virtual void connectToServer(std::string_view host, std::uint16_t port, 
-                                 std::string_view username, std::string_view password) = 0; 
+                               std::string_view username, std::string_view password) = 0;
+    virtual void disconnect() = 0;  
 };
 
 class IMessageSender {
