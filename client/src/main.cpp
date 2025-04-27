@@ -12,8 +12,8 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    LoginWindow loginWindow(&dbManager);
-    loginWindow.show();
+    LoginWindow window(&dbManager);
+    window.show();
 
     return app.exec();
 }

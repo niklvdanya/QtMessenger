@@ -18,7 +18,6 @@ public:
 
     void connectToServer(std::string_view host, std::uint16_t port, 
                          std::string_view username, std::string_view password) override;
-    void disconnect() override;  
     void setDisconnectedCallback(const DisconnectedCallback& callback) override;
     void sendMessage(std::string_view message) override;
     void setMessageCallback(const MessageCallback& callback) override;

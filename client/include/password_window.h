@@ -12,9 +12,6 @@ class PasswordWindow : public QDialog {
 public:
     PasswordWindow(const QString& username, DatabaseManager* dbManager, QWidget* parent = nullptr);
 
-signals:
-    void chatWindowOpened(ChatWindow* chatWindow);  
-
 private slots:
     void onSubmitClicked();
 

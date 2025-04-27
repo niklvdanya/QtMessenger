@@ -10,9 +10,6 @@ class LoginWindow : public QMainWindow {
 public:
     explicit LoginWindow(DatabaseManager* dbManager, QWidget* parent = nullptr);
 
-signals:
-    void chatWindowClosed();  
-
 private slots:
     void onLoginClicked();
     void onRegisterClicked();

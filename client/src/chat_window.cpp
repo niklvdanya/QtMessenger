@@ -6,9 +6,7 @@
 #include <QRandomGenerator>
 #include <QDateTime>
 #include <QStyle>
-#include <QKeyEvent>
-#include <QMessageBox>
-#include "login_window.h"
+#include <QKeyEvent> 
 
 ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent) 
     : QMainWindow(parent) {
@@ -23,11 +21,12 @@ ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* p
 
 void ChatWindow::handleMessageReceived(const Message& msg) {
     std::string displayName = (msg.username == m_controller->username()) ? "You" : msg.username;
+
     QString formattedMessage = QString::fromStdString(
         "[" + msg.timestamp.toString("hh:mm:ss").toStdString() + "] " +
         displayName + ": " + msg.text);
+
     auto* item = new QListWidgetItem(formattedMessage, m_chatHistory.get());
-    
     if (msg.username == m_controller->username()) {
         item->setBackground(QColor(200, 230, 255)); 
     }
@@ -58,24 +57,18 @@ void ChatWindow::setupUi() {
     m_inputField = std::make_unique<QLineEdit>(this);
     m_sendButton = std::make_unique<QPushButton>("Send", this);
     m_emojiButton = std::make_unique<QPushButton>("😊", this);
-    m_logoutButton = std::make_unique<QPushButton>("Log out", this); 
     m_statusLabel = std::make_unique<QLabel>("Disconnected", this);
 
     auto* centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
     auto* mainLayout = new QVBoxLayout(centralWidget);
-
-    auto* topLayout = new QHBoxLayout();
-    topLayout->addWidget(m_logoutButton.get());
-    topLayout->addStretch(); 
-    topLayout->addWidget(m_statusLabel.get());
     
     auto* inputLayout = new QHBoxLayout();
     inputLayout->addWidget(m_emojiButton.get());
     inputLayout->addWidget(m_inputField.get());
     inputLayout->addWidget(m_sendButton.get());
 
-    mainLayout->addLayout(topLayout);  
+    mainLayout->addWidget(m_statusLabel.get());
     mainLayout->addWidget(m_chatHistory.get());
     mainLayout->addLayout(inputLayout);
 
@@ -138,30 +131,20 @@ void ChatWindow::applyStyles() {
         QPushButton#emojiButton:pressed {
             background-color: #d0d0d0;
         }
-        QPushButton#logoutButton {
-            background-color: #dc3545;  /* Красный цвет для кнопки выхода */
-        }
-        QPushButton#logoutButton:hover {
-            background-color: #c82333;
-        }
-        QPushButton#logoutButton:pressed {
-            background-color: #bd2130;
-        }
         QLabel {
             font-size: 12px;
             color: #666666;
         }
     )");
 
-    m_emojiButton->setObjectName("emojiButton");
-    m_logoutButton->setObjectName("logoutButton"); 
+    m_emojiButton->setObjectName("emojiButton"); 
 }
 
 void ChatWindow::connectSignals() {
     connect(m_sendButton.get(), &QPushButton::clicked, this, &ChatWindow::sendMessage);
     connect(m_inputField.get(), &QLineEdit::returnPressed, this, &ChatWindow::sendMessage);
     connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);
-    connect(m_logoutButton.get(), &QPushButton::clicked, this, &ChatWindow::logout); 
+
     if (auto* networkClient = m_controller->getNetworkClient()) {
         connect(networkClient, &NetworkClient::messageReceived,
                 this, &ChatWindow::handleMessageReceived);
@@ -191,23 +174,4 @@ void ChatWindow::openEmojiWindow() {
 
 void ChatWindow::insertEmoji(const QString& emoji) {
     m_inputField->insert(emoji); 
-}
-
-void ChatWindow::logout() {
-    QMessageBox confirmBox;
-    confirmBox.setWindowTitle("Confirm Logout");
-    confirmBox.setText("Are you sure you want to log out?");
-    confirmBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    confirmBox.setDefaultButton(QMessageBox::No);
-    confirmBox.setIcon(QMessageBox::Question);
-    
-    int result = confirmBox.exec();
-    
-    if (result == QMessageBox::Yes) {
-        if (auto* networkClient = m_controller->getNetworkClient()) {
-            networkClient->disconnect();
-        }
-        emit loggedOut();
-        close();
-    }
 }
