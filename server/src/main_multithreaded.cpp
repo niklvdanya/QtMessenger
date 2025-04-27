@@ -11,8 +11,8 @@ int main(int argc, char *argv[]) {
         qDebug() << "Failed to initialize database. Exiting...";
         return -1;
     }
-
-    MultithreadedServer server(12345, 4, &dbManager);
+    
+    MultithreadedServer server(12345, 4, nullptr);
     server.start(12345);
 
     QObject::connect(&server, &MultithreadedServer::newConnection,

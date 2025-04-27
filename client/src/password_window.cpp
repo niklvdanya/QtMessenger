@@ -2,6 +2,7 @@
 #include "network_client_factory.h"
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QDebug>
 
 PasswordWindow::PasswordWindow(const QString& username, DatabaseManager* dbManager, QWidget* parent)
     : QDialog(parent), m_username(username), m_dbManager(dbManager) {
@@ -25,6 +26,7 @@ void PasswordWindow::setupUi() {
     mainLayout->addWidget(m_submitButton.get());
 
     connect(m_submitButton.get(), &QPushButton::clicked, this, &PasswordWindow::onSubmitClicked);
+    connect(m_passwordField.get(), &QLineEdit::returnPressed, this, &PasswordWindow::onSubmitClicked);
 }
 
 void PasswordWindow::applyStyles() {
@@ -73,9 +75,12 @@ void PasswordWindow::onSubmitClicked() {
         return;
     }
 
-    if (m_dbManager->checkUser(m_username, password)) {
-        auto networkClient = NetworkClientFactory::createTcpClient(nullptr);
+    bool localCheck = m_dbManager->checkUser(m_username, password);
+
+    if (localCheck) {
+        auto networkClient = NetworkClientFactory::createTcpClient(nullptr);         
         networkClient->connectToServer("127.0.0.1", 12345, m_username.toStdString(), password.toStdString()); 
+        
         ChatWindow* chatWindow = new ChatWindow(std::move(networkClient));
         chatWindow->show();
         accept();

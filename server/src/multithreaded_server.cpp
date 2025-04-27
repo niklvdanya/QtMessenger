@@ -3,6 +3,11 @@
 #include <QDebug>
 #include <QDataStream>
 #include <QByteArray>
+#include <QIODevice>
+
+bool acceptAllCredentials(const QString& username, const QString& password) {
+    return !username.isEmpty() && !password.isEmpty();
+}
 
 MultithreadedServer::MultithreadedServer(unsigned short port, int thread_count, DatabaseManager* dbManager, QObject* parent)
     : QObject(parent),
@@ -66,18 +71,8 @@ void MultithreadedServer::accept_connections() {
 }
 
 void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
-    auto session = std::make_unique<BoostAsioClientSession>(socket, m_dbManager);
+    auto session = std::make_unique<BoostAsioClientSession>(socket, nullptr);
     QUuid clientId = session->uuid();
-    session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
-        m_messageHandler->handleMessage(message, senderId, username);
-        emit messageReceived(message, senderId, username);
-    });
-
-    session->setDisconnectCallback([this](QUuid clientId) {
-        m_clientManager->removeClient(clientId);
-        emit clientDisconnected(clientId);
-        qDebug() << "Client disconnected, UUID:" << clientId;
-    });
 
     session->setReadyCallback([this, clientId]() {
         const auto& history = m_clientManager->getChatHistory();
@@ -89,9 +84,68 @@ void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp
             }
         }
     });
+    
+    session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
+        m_messageHandler->handleMessage(message, senderId, username);
+        emit messageReceived(message, senderId, username);
+    });
+
+    session->setDisconnectCallback([this](QUuid clientId) {
+        m_clientManager->removeClient(clientId);
+        emit clientDisconnected(clientId);
+        qDebug() << "Client disconnected, UUID:" << clientId;
+    });
 
     m_clientManager->addClient(clientId, std::move(session));
-
     emit newConnection(clientId);
     qDebug() << "New connection, UUID:" << clientId;
+
+    auto* sessionPtr = dynamic_cast<BoostAsioClientSession*>(m_clientManager->getClients().at(clientId).get());
+    auto buffer = std::make_shared<std::vector<char>>(1024);
+
+    socket->async_read_some(
+        boost::asio::buffer(*buffer),
+        [this, socket, buffer, clientId, sessionPtr](const boost::system::error_code& error, std::size_t bytes_transferred) {
+            if (error) {
+                qDebug() << "Error reading credentials:" << QString::fromStdString(error.message());
+                m_clientManager->removeClient(clientId);
+                return;
+            }
+            
+            try {
+        
+                QByteArray rawData(buffer->data(), static_cast<int>(bytes_transferred));
+                QDataStream stream(&rawData, QIODevice::ReadOnly);
+                stream.setVersion(QDataStream::Qt_6_0);
+                
+                QString username, password;
+                stream >> username >> password;
+                
+                if (username.isEmpty() || password.isEmpty()) {
+                    m_clientManager->removeClient(clientId);
+                    return;
+                }
+
+                bool validCredentials = acceptAllCredentials(username, password);
+                
+                if (validCredentials) {
+                    sessionPtr->m_username = username.toStdString();
+                    sessionPtr->m_credentialsValidated = true;
+
+                    if (sessionPtr->m_readyCallback) {
+                        sessionPtr->m_readyCallback();
+                    }
+                    auto messageBuffer = std::make_shared<std::vector<char>>(1024);
+                    socket->async_read_some(boost::asio::buffer(*messageBuffer),
+                        [sessionPtr, messageBuffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
+                            sessionPtr->handleReadMessage(error, bytes_transferred, messageBuffer);
+                        });
+                } else {
+                    m_clientManager->removeClient(clientId);
+                }
+            } catch (const std::exception& e) {
+                qDebug() << "Ошибка при разборе учетных данных:" << e.what();
+                m_clientManager->removeClient(clientId);
+            }
+        });
 }

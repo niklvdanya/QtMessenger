@@ -7,6 +7,8 @@
 #include "message.h"
 #include "database_manager.h"
 
+class MultithreadedServer;
+
 class BoostAsioClientSession : public IClientSession {
 public:
     explicit BoostAsioClientSession(std::shared_ptr<boost::asio::ip::tcp::socket> socket, DatabaseManager* dbManager);
@@ -18,16 +20,11 @@ public:
     void setDisconnectCallback(const DisconnectCallback& callback) override;
     std::shared_ptr<boost::asio::ip::tcp::socket> getSocket() const;
 
-    void readCredentials();
-
     using ReadyCallback = std::function<void()>;
     void setReadyCallback(const ReadyCallback& callback);
 
 private:
-    void handleReadUsername(const boost::system::error_code& error, std::size_t bytes_transferred, 
-                           std::shared_ptr<std::vector<char>> buffer);
-    void handleReadPassword(const boost::system::error_code& error, std::size_t bytes_transferred, 
-                           std::shared_ptr<std::vector<char>> buffer);
+    friend class MultithreadedServer;
     void handleReadMessage(const boost::system::error_code& error, std::size_t bytes_transferred, 
                           std::shared_ptr<std::vector<char>> buffer);
 
