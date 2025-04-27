@@ -9,8 +9,9 @@
 NetworkClient::NetworkClient(QObject* parent) : QObject(parent) {
 }
 
-void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, std::string_view username) {
+void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, std::string_view username, std::string_view password) {
     m_username = username;
+    m_password = password;
     m_socket = std::make_unique<QTcpSocket>(this);
     m_authHandler = std::make_unique<AuthHandler>(m_socket.get());
 
@@ -19,6 +20,14 @@ void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, s
     connect(m_socket.get(), &QTcpSocket::disconnected, this, &NetworkClient::onDisconnected);
 
     m_socket->connectToHost(QString::fromStdString(std::string(host)), port);
+}
+
+void NetworkClient::onConnected() {
+    m_authHandler->sendUsername(m_username);
+    QDataStream stream(m_socket.get());
+    stream << QString::fromStdString(m_password);
+    qDebug() << "Connected to server, sent username:" << QString::fromStdString(m_username);
+    emit connectionStatusChanged(true);
 }
 
 void NetworkClient::sendMessage(std::string_view message) {
@@ -43,12 +52,6 @@ void NetworkClient::setMessageCallback(const MessageCallback& callback) {
 
 void NetworkClient::setDisconnectedCallback(const DisconnectedCallback& callback) {
     m_disconnectedCallback = callback;
-}
-
-void NetworkClient::onConnected() {
-    m_authHandler->sendUsername(m_username);
-    qDebug() << "Connected to server, sent username:" << QString::fromStdString(m_username);
-    emit connectionStatusChanged(true);
 }
 
 void NetworkClient::onReadyRead() {

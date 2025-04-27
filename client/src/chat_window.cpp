@@ -15,17 +15,7 @@ ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* p
     setupUi();
     applyStyles();
 
-    bool ok;
-    QString username = QInputDialog::getText(this, "Enter name", 
-                                             "Your name:", QLineEdit::Normal, 
-                                             "User", &ok);
-    if (!ok || username.isEmpty()) {
-        username = "Guest_" + QString::number(QRandomGenerator::global()->bounded(1000));
-    }
-
     m_controller = std::make_unique<ChatController>(std::move(networkClient), this);
-    m_controller->setUsername(username.toStdString());
-    
     connectSignals();
 }
 
