@@ -391,10 +391,6 @@ void ChatWindow::openEmojiWindow() {
     emojiWindow->exec(); 
 }
 
-void ChatWindow::insertEmoji(const QString& emoji) {
-    m_inputField->insert(emoji); 
-}
-
 void ChatWindow::logout() {
     QMessageBox confirmBox;
     confirmBox.setWindowTitle("Confirm Logout");
