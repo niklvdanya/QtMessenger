@@ -1,5 +1,4 @@
 #include "user_list_window.h"
-#include <QDebug>
 
 UserListWindow::UserListWindow(QWidget* parent) : QDialog(parent) {
     setWindowTitle("Online Users");

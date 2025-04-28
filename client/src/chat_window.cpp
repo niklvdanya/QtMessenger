@@ -2,13 +2,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout> 
 #include <QWidget>
-#include <QInputDialog>
-#include <QRandomGenerator>
+#include <QMessageBox>
 #include <QDateTime>
 #include <QStyle>
-#include <QKeyEvent>
-#include <QMessageBox>
-#include "login_window.h"
 
 ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent) 
     : QMainWindow(parent) {
@@ -19,9 +15,19 @@ ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* p
 
     m_controller = std::make_unique<ChatController>(std::move(networkClient), this);
     connectSignals();
+    updateConnectionStatus(false);
 }
 
-void ChatWindow::handleMessageReceived(const Message& msg) {
+void ChatWindow::displaySystemMessage(const std::string& message) {
+    QString formattedMessage = QString::fromStdString(
+        "[" + QDateTime::currentDateTime().toString("hh:mm:ss").toStdString() + "] [System]: " + message);
+    auto* item = new QListWidgetItem(formattedMessage, m_chatHistory.get());
+    item->setForeground(Qt::darkGray); 
+    m_chatHistory->addItem(item);
+    m_chatHistory->scrollToBottom();
+}
+
+void ChatWindow::displayChatMessage(const Message& msg) {
     std::string displayName = (msg.username == m_controller->username()) ? "You" : msg.username;
     QString formattedMessage = QString::fromStdString(
         "[" + msg.timestamp.toString("hh:mm:ss").toStdString() + "] " +
@@ -36,21 +42,17 @@ void ChatWindow::handleMessageReceived(const Message& msg) {
     m_chatHistory->scrollToBottom();
 }
 
-void ChatWindow::displaySystemMessage(const std::string& message) {
-    QString formattedMessage = QString::fromStdString(
-        "[" + QDateTime::currentDateTime().toString("hh:mm:ss").toStdString() + "] [System]: " + message);
-    auto* item = new QListWidgetItem(formattedMessage, m_chatHistory.get());
-    item->setForeground(Qt::darkGray); 
-    m_chatHistory->addItem(item);
-    m_chatHistory->scrollToBottom();
-}
-
 std::string ChatWindow::getInputText() {
-    return m_inputField->text().toStdString();
+    return m_inputField->text().trimmed().toStdString();
 }
 
 void ChatWindow::clearInput() {
     m_inputField->clear();
+}
+
+void ChatWindow::updateConnectionStatus(bool connected) {
+    m_statusLabel->setText(connected ? "Connected" : "Disconnected");
+    m_statusLabel->setStyleSheet(connected ? "color: #28a745;" : "color: #dc3545;");
 }
 
 void ChatWindow::setupUi() {
@@ -179,8 +181,6 @@ void ChatWindow::connectSignals() {
     connect(m_logoutButton.get(), &QPushButton::clicked, this, &ChatWindow::logout); 
     connect(m_usersButton.get(), &QPushButton::clicked, this, &ChatWindow::openUserListWindow);
     if (auto* networkClient = m_controller->getNetworkClient()) {
-        connect(networkClient, &NetworkClient::messageReceived,
-                this, &ChatWindow::handleMessageReceived);
         connect(networkClient, &NetworkClient::connectionStatusChanged,
                 this, &ChatWindow::updateConnectionStatus);
         connect(networkClient, &NetworkClient::userListReceived,
@@ -189,20 +189,11 @@ void ChatWindow::connectSignals() {
 }
 
 void ChatWindow::sendMessage() {
-    QString text = m_inputField->text().trimmed();
-    if (!text.isEmpty()) {
-        m_controller->sendMessage(text.toStdString());
-        clearInput();
-    }
-}
-
-void ChatWindow::updateConnectionStatus(bool connected) {
-    m_statusLabel->setText(connected ? "Connected" : "Disconnected");
-    m_statusLabel->setStyleSheet(connected ? "color: #28a745;" : "color: #dc3545;");
+    m_controller->sendMessage();
 }
 
 void ChatWindow::openEmojiWindow() {
-    EmojiWindow* emojiWindow = new EmojiWindow(this);
+    auto* emojiWindow = new EmojiWindow(this);
     connect(emojiWindow, &EmojiWindow::emojiSelected, this, &ChatWindow::insertEmoji);
     emojiWindow->exec(); 
 }
@@ -222,9 +213,7 @@ void ChatWindow::logout() {
     int result = confirmBox.exec();
     
     if (result == QMessageBox::Yes) {
-        if (auto* networkClient = m_controller->getNetworkClient()) {
-            networkClient->disconnect();
-        }
+        m_controller->disconnect();
         emit loggedOut();
         close();
     }
@@ -240,9 +229,7 @@ void ChatWindow::openUserListWindow() {
 }
 
 void ChatWindow::requestUserList() {
-    if (auto* networkClient = m_controller->getNetworkClient()) {
-        networkClient->requestUserList();
-    }
+    m_controller->requestUserList();
 }
 
 void ChatWindow::updateUserList(const std::vector<QString>& userList) {

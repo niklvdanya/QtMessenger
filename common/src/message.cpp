@@ -1,12 +1,31 @@
 #include "message.h"
 
+Message::Message(const QUuid& senderId, std::string username, std::string text)
+    : senderId(senderId)
+    , username(std::move(username))
+    , text(std::move(text))
+    , timestamp(QDateTime::currentDateTime())
+    , type(MessageType::Chat) {
+}
+
+bool Message::operator==(const Message& other) const noexcept {
+    return senderId == other.senderId &&
+           username == other.username &&
+           text == other.text &&
+           timestamp == other.timestamp &&
+           type == other.type;
+}
+
+bool Message::operator!=(const Message& other) const noexcept {
+    return !(*this == other);
+}
+
 QDataStream& operator<<(QDataStream& stream, const Message& msg) {
     stream.setVersion(QDataStream::Qt_6_0);
     stream << msg.senderId << QString::fromStdString(msg.username) 
            << QString::fromStdString(msg.text) << msg.timestamp
            << static_cast<int>(msg.type);
     
-    // Если это список пользователей, сериализуем и его
     if (msg.type == MessageType::UserList) {
         stream << static_cast<int>(msg.userList.size());
         for (const auto& user : msg.userList) {
@@ -29,6 +48,7 @@ QDataStream& operator>>(QDataStream& stream, Message& msg) {
         int size;
         stream >> size;
         msg.userList.clear();
+        msg.userList.reserve(size);
         for (int i = 0; i < size; ++i) {
             QString user;
             stream >> user;

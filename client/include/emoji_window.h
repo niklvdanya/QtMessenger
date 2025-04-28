@@ -8,6 +8,7 @@ class EmojiWindow : public QDialog {
     Q_OBJECT
 public:
     explicit EmojiWindow(QWidget* parent = nullptr);
+    ~EmojiWindow() override = default;
 
 signals:
     void emojiSelected(const QString& emoji);
@@ -18,5 +19,5 @@ private:
     void addEmojiButtons();
 
     std::vector<QString> m_emojis;
-    QGridLayout* m_gridLayout;
+    QGridLayout* m_gridLayout{nullptr};
 };

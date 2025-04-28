@@ -4,19 +4,37 @@
 #include <QDataStream>
 #include <QByteArray>
 #include <QIODevice>
+#include <QSqlDatabase>
+#include <QThread>
+#include <functional>
 
-bool acceptAllCredentials(const QString& username, const QString& password) {
-    return !username.isEmpty() && !password.isEmpty();
-}
+class SharedSessionWrapper : public IClientSession {
+public:
+    explicit SharedSessionWrapper(std::shared_ptr<BoostAsioClientSession> session) 
+        : m_session(std::move(session)) {}
+    
+    QUuid uuid() const noexcept override { return m_session->uuid(); }
+    std::string username() const override { return m_session->username(); }
+    void sendMessage(const std::string& message) override { m_session->sendMessage(message); }
+    void sendMessage(const Message& msg) override { m_session->sendMessage(msg); }
+    void setMessageCallback(const MessageCallback& callback) override { m_session->setMessageCallback(callback); }
+    void setDisconnectCallback(const DisconnectCallback& callback) override { m_session->setDisconnectCallback(callback); }
+    bool isAuthenticated() const override { return m_session->isAuthenticated(); }
+    
+private:
+    std::shared_ptr<BoostAsioClientSession> m_session;
+};
 
-MultithreadedServer::MultithreadedServer(unsigned short port, int thread_count, DatabaseManager* dbManager, QObject* parent)
-    : QObject(parent),
-      m_io_context(),
-      m_acceptor(m_io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
-      m_clientManager(std::make_shared<ClientManager>()),
-      m_messageHandler(std::make_shared<MessageHandler>(m_clientManager)),
-      m_dbManager(dbManager),
-      m_running(false) {
+MultithreadedServer::MultithreadedServer(unsigned short port, int thread_count, 
+                                       IDatabase* dbManager, QObject* parent)
+    : QObject(parent)
+    , m_io_context()
+    , m_acceptor(m_io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+    , m_dbManager(dbManager)
+    , m_clientManager(std::make_shared<ClientManager>())
+    , m_messageHandler(std::make_shared<MessageHandler>(m_clientManager))
+    , m_running(false) {
+    
     m_threads.reserve(thread_count);
 }
 
@@ -36,7 +54,8 @@ void MultithreadedServer::start(uint16_t port) {
         });
     }
 
-    qDebug() << "Multithreaded server started on port" << m_acceptor.local_endpoint().port();
+    qDebug() << "Multithreaded server started on port" << m_acceptor.local_endpoint().port()
+             << "with" << m_threads.size() << "worker threads";
 }
 
 void MultithreadedServer::stop() {
@@ -57,11 +76,18 @@ void MultithreadedServer::stop() {
     qDebug() << "Server stopped";
 }
 
+bool MultithreadedServer::isRunning() const {
+    return m_running;
+}
+
 void MultithreadedServer::accept_connections() {
     auto socket = std::make_shared<boost::asio::ip::tcp::socket>(m_io_context);
+    
     m_acceptor.async_accept(*socket, [this, socket](const boost::system::error_code& error) {
         if (!error) {
             handle_connection(socket);
+        } else {
+            qDebug() << "Error accepting connection:" << QString::fromStdString(error.message());
         }
 
         if (m_running) {
@@ -70,38 +96,15 @@ void MultithreadedServer::accept_connections() {
     });
 }
 
-class SharedSessionWrapper : public IClientSession {
-public:
-    explicit SharedSessionWrapper(std::shared_ptr<BoostAsioClientSession> session) : m_session(session) {}
-    
-    QUuid uuid() const noexcept override { return m_session->uuid(); }
-    std::string username() const override { return m_session->username(); }
-    void sendMessage(const std::string& message) override { m_session->sendMessage(message); }
-    void sendMessage(const Message& msg) override { m_session->sendMessage(msg); }
-    void setMessageCallback(const MessageCallback& callback) override { m_session->setMessageCallback(callback); }
-    void setDisconnectCallback(const DisconnectCallback& callback) override { m_session->setDisconnectCallback(callback); }
-    
-private:
-    std::shared_ptr<BoostAsioClientSession> m_session;
-};
-
 void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
-    auto session = std::make_shared<BoostAsioClientSession>(socket, nullptr);
-    QUuid clientId = session->uuid();
-    session->setMessageCallback([this](const std::string& message, QUuid senderId, const std::string& username) {
-        m_messageHandler->handleMessage(message, senderId, username);
-        emit messageReceived(message, senderId, username);
-    });
-
-    session->setDisconnectCallback([this, clientId](QUuid) {
-        m_clientManager->removeClient(clientId);
-        emit clientDisconnected(clientId);
-        qDebug() << "Client disconnected, UUID:" << clientId;
-    });
+    qDebug() << "New connection from:" << QString::fromStdString(
+        socket->remote_endpoint().address().to_string());
+    
     auto buffer = std::make_shared<std::vector<char>>(1024);
+    
     socket->async_read_some(
         boost::asio::buffer(*buffer),
-        [this, socket, buffer, clientId, session](const boost::system::error_code& error, std::size_t bytes_transferred) {
+        [this, socket, buffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
             if (error) {
                 qDebug() << "Error reading credentials:" << QString::fromStdString(error.message());
                 return;
@@ -114,28 +117,59 @@ void MultithreadedServer::handle_connection(std::shared_ptr<boost::asio::ip::tcp
                 
                 QString username, password;
                 stream >> username >> password;
-                bool validCredentials = acceptAllCredentials(username, password);
+
+                auto session = std::make_shared<BoostAsioClientSession>(socket);
+                QUuid clientId = session->uuid();
+                bool authenticated = authenticate_client(username.toStdString(), password.toStdString());
                 
-                if (validCredentials) {
-                    qDebug() << "New User:" << username;
-                    session->m_username = username.toStdString();
-                    session->m_credentialsValidated = true;
+                if (authenticated) {
+                    qDebug() << "User authenticated:" << username;
+                    session->authenticate(username.toStdString(), password.toStdString());
+                    session->setMessageCallback([this, clientId](const Message& message, QUuid senderId) {
+                        m_messageHandler->handleMessage(message, senderId);
+                        emit messageReceived(message);
+                    });
+                    
+                    session->setDisconnectCallback([this, clientId](QUuid) {
+                        m_clientManager->removeClient(clientId);
+                        emit clientDisconnected(clientId);
+                        qDebug() << "Client disconnected, UUID:" << clientId;
+                    });
                     
                     auto wrapper = std::make_unique<SharedSessionWrapper>(session);
                     m_clientManager->addClient(clientId, std::move(wrapper));
-                    emit newConnection(clientId);
-                    qDebug() << "New connection added to client manager, UUID:" << clientId;
                     
-                    auto messageBuffer = std::make_shared<std::vector<char>>(4096);
-                    socket->async_read_some(boost::asio::buffer(*messageBuffer),
-                        [session, messageBuffer](const boost::system::error_code& error, std::size_t bytes_transferred) {
-                            session->handleReadMessage(error, bytes_transferred, messageBuffer);
-                        });
+                    session->start();
+                    
+                    emit newConnection(clientId);
+                    qDebug() << "New authenticated connection added, UUID:" << clientId;
                 } else {
-                    qDebug() << "Wrong data for: " << username;
+                    qDebug() << "Authentication failed for:" << username;
+                    socket->close();
                 }
             } catch (const std::exception& e) {
-                qDebug() << "Error:" << e.what();
+                qDebug() << "Error processing credentials:" << e.what();
+                socket->close();
             }
         });
+}
+
+bool MultithreadedServer::authenticate_client(const std::string& username, const std::string& password) {
+    if (QThread::currentThread() != thread()) {
+        bool result = false;
+        QMetaObject::invokeMethod(this, [this, &username, &password, &result]() {
+            result = this->authenticate_client_impl(username, password);
+        }, Qt::BlockingQueuedConnection);
+        return result;
+    }
+
+    return authenticate_client_impl(username, password);
+}
+
+bool MultithreadedServer::authenticate_client_impl(const std::string& username, const std::string& password) {
+    if (m_dbManager) {
+        return m_dbManager->checkUser(QString::fromStdString(username), 
+                                    QString::fromStdString(password));
+    }
+    return !username.empty() && !password.empty();
 }

@@ -3,6 +3,10 @@
 #include <QDebug>
 #include <QDir>
 
+DatabaseException::DatabaseException(const std::string& message)
+    : std::runtime_error(message) {
+}
+
 DatabaseManager::DatabaseManager() : m_db(QSqlDatabase::addDatabase("QSQLITE")) {}
 
 DatabaseManager::~DatabaseManager() {
@@ -16,17 +20,18 @@ bool DatabaseManager::initialize() {
     
     m_db.setDatabaseName("chat_app.db");
     if (!m_db.open()) {
-        qDebug() << "Failed to open database:" << m_db.lastError().text();
-        return false;
+        const auto errorMessage = m_db.lastError().text();
+        qDebug() << "Failed to open database:" << errorMessage;
+        throw DatabaseException("Failed to open database: " + errorMessage.toStdString());
     }
     
     QSqlQuery query;
-    query.exec("CREATE TABLE IF NOT EXISTS users ("
-              "username TEXT PRIMARY KEY, "
-              "password TEXT NOT NULL)");
-    if (query.lastError().isValid()) {
-        qDebug() << "Failed to create table:" << query.lastError().text();
-        return false;
+    if (!query.exec("CREATE TABLE IF NOT EXISTS users ("
+                   "username TEXT PRIMARY KEY, "
+                   "password TEXT NOT NULL)")) {
+        const auto errorMessage = query.lastError().text();
+        qDebug() << "Failed to create table:" << errorMessage;
+        throw DatabaseException("Failed to create table: " + errorMessage.toStdString());
     }
     
     query.exec("SELECT COUNT(*) FROM users");
@@ -35,8 +40,6 @@ bool DatabaseManager::initialize() {
         addUser("danya", "123");
     }
 
-    query.exec("SELECT username, password FROM users");
-    
     return true;
 }
 
@@ -45,11 +48,13 @@ bool DatabaseManager::addUser(const QString& username, const QString& password) 
     query.prepare("INSERT INTO users (username, password) VALUES (?, ?)");
     query.addBindValue(username);
     query.addBindValue(password);
+    
     if (!query.exec()) {
         qDebug() << "Failed to add user:" << query.lastError().text();
         return false;
     }
-    qDebug() << "User" << username << "added successfully with password:" << password;
+    
+    qDebug() << "User" << username << "added successfully";
     return true;
 }
 
@@ -57,6 +62,7 @@ bool DatabaseManager::checkUser(const QString& username, const QString& password
     QSqlQuery query;
     query.prepare("SELECT password FROM users WHERE username = ?");
     query.addBindValue(username);
+    
     if (!query.exec() || !query.next()) {
         qDebug() << "User" << username << "not found or query error:" << query.lastError().text();
         return false;
@@ -65,8 +71,7 @@ bool DatabaseManager::checkUser(const QString& username, const QString& password
     QString storedPassword = query.value(0).toString();
     bool match = (storedPassword == password);
     
-    qDebug() << "Password check for" << username << "- entered:" << password 
-             << ", stored:" << storedPassword << ", match:" << match;
+    qDebug() << "Password check for" << username << "- match:" << match;
     
     return match;
 }
@@ -75,6 +80,7 @@ bool DatabaseManager::userExists(const QString& username) {
     QSqlQuery query;
     query.prepare("SELECT COUNT(*) FROM users WHERE username = ?");
     query.addBindValue(username);
+    
     if (!query.exec() || !query.next()) {
         qDebug() << "Error checking if user exists:" << query.lastError().text();
         return false;

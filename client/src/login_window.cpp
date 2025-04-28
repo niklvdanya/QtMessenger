@@ -6,12 +6,22 @@
 #include <QHBoxLayout>
 #include <QWidget>
 
-LoginWindow::LoginWindow(DatabaseManager* dbManager, QWidget* parent)
+LoginWindow::LoginWindow(IDatabase* dbManager, QWidget* parent)
     : QMainWindow(parent), m_dbManager(dbManager) {
     setWindowTitle("Qt Chat App - Login");
     setFixedSize(400, 300);
     setupUi();
     applyStyles();
+}
+
+void LoginWindow::displayErrorMessage(const QString& message) {
+    m_titleLabel->setText(message);
+    m_titleLabel->setStyleSheet("color: #dc3545;");
+}
+
+void LoginWindow::clearErrorMessage() {
+    m_titleLabel->setText("Qt Chat App");
+    m_titleLabel->setStyleSheet("color: #333333;");
 }
 
 void LoginWindow::setupUi() {
@@ -77,25 +87,22 @@ void LoginWindow::applyStyles() {
 void LoginWindow::onLoginClicked() {
     QString username = m_usernameField->text().trimmed();
     if (username.isEmpty()) {
-        m_titleLabel->setText("Please enter a username");
-        m_titleLabel->setStyleSheet("color: #dc3545;");
+        displayErrorMessage("Please enter a username");
         return;
     }
 
     if (!m_dbManager->userExists(username)) {
-        m_titleLabel->setText("User does not exist");
-        m_titleLabel->setStyleSheet("color: #dc3545;");
+        displayErrorMessage("User does not exist");
         return;
     }
 
-    PasswordWindow* passwordWindow = new PasswordWindow(username, m_dbManager, this);
+    auto* passwordWindow = new PasswordWindow(username, m_dbManager, this);
 
     connect(passwordWindow, &PasswordWindow::chatWindowOpened, this, [this](ChatWindow* chatWindow) {
         connect(chatWindow, &ChatWindow::loggedOut, this, [this]() {
             show();
             m_usernameField->clear();
-            m_titleLabel->setText("Qt Chat App");
-            m_titleLabel->setStyleSheet("color: #333333;");
+            clearErrorMessage();
         });
         hide();
     });
@@ -104,6 +111,6 @@ void LoginWindow::onLoginClicked() {
 }
 
 void LoginWindow::onRegisterClicked() {
-    RegisterWindow* registerWindow = new RegisterWindow(m_dbManager, this);
+    auto* registerWindow = new RegisterWindow(m_dbManager, this);
     registerWindow->exec();
 }

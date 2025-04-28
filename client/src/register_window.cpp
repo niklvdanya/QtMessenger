@@ -3,7 +3,7 @@
 #include <QWidget>
 #include <QTimer>
 
-RegisterWindow::RegisterWindow(DatabaseManager* dbManager, QWidget* parent)
+RegisterWindow::RegisterWindow(IDatabase* dbManager, QWidget* parent)
     : QDialog(parent), m_dbManager(dbManager) {
     setWindowTitle("Register");
     setFixedSize(300, 250);
@@ -68,28 +68,29 @@ void RegisterWindow::applyStyles() {
     )");
 }
 
+void RegisterWindow::showMessage(const QString& message, bool isError) {
+    m_statusLabel->setText(message);
+    m_statusLabel->setStyleSheet(isError ? "color: #dc3545;" : "color: #28a745;");
+}
+
 void RegisterWindow::onRegisterClicked() {
     QString username = m_usernameField->text().trimmed();
     QString password = m_passwordField->text().trimmed();
 
     if (username.isEmpty() || password.isEmpty()) {
-        m_statusLabel->setText("Please fill in all fields");
-        m_statusLabel->setStyleSheet("color: #dc3545;");
+        showMessage("Please fill in all fields", true);
         return;
     }
 
     if (m_dbManager->userExists(username)) {
-        m_statusLabel->setText("Username already exists");
-        m_statusLabel->setStyleSheet("color: #dc3545;");
+        showMessage("Username already exists", true);
         return;
     }
 
     if (m_dbManager->addUser(username, password)) {
-        m_statusLabel->setText("Registration successful!");
-        m_statusLabel->setStyleSheet("color: #28a745;");
+        showMessage("Registration successful!", false);
         QTimer::singleShot(1000, this, &QDialog::accept);
     } else {
-        m_statusLabel->setText("Registration failed");
-        m_statusLabel->setStyleSheet("color: #dc3545;");
+        showMessage("Registration failed", true);
     }
 }

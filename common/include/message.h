@@ -3,6 +3,8 @@
 #include <QDateTime>
 #include <QDataStream>
 #include <string>
+#include <vector>
+#include <optional>
 
 enum class MessageType {
     Chat,      
@@ -10,20 +12,20 @@ enum class MessageType {
     System      
 };
 
-struct Message {
+class Message {
+public:
+    Message() = default;
+    explicit Message(const QUuid& senderId, std::string username, std::string text);
+    
     QUuid senderId;
     std::string username;
     std::string text;
     QDateTime timestamp;
-    MessageType type = MessageType::Chat; 
-    std::vector<std::string> userList; 
+    MessageType type = MessageType::Chat;
+    std::vector<std::string> userList;
 
-    bool operator==(const Message& other) const noexcept {
-        return senderId == other.senderId &&
-               username == other.username &&
-               text == other.text &&
-               timestamp == other.timestamp;
-    }
+    bool operator==(const Message& other) const noexcept;
+    bool operator!=(const Message& other) const noexcept;
 };
 
 QDataStream& operator<<(QDataStream& stream, const Message& msg);

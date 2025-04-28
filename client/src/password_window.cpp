@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QDebug>
 
-PasswordWindow::PasswordWindow(const QString& username, DatabaseManager* dbManager, QWidget* parent)
+PasswordWindow::PasswordWindow(const QString& username, IDatabase* dbManager, QWidget* parent)
     : QDialog(parent), m_username(username), m_dbManager(dbManager) {
     setWindowTitle("Enter Password");
     setFixedSize(300, 200);
@@ -67,39 +67,47 @@ void PasswordWindow::applyStyles() {
     )");
 }
 
+void PasswordWindow::showError(const QString& message) {
+    m_statusLabel->setText(message);
+    m_statusLabel->setStyleSheet("color: #dc3545;");
+}
+
 void PasswordWindow::onSubmitClicked() {
     QString password = m_passwordField->text().trimmed();
     if (password.isEmpty()) {
-        m_statusLabel->setText("Please enter a password");
-        m_statusLabel->setStyleSheet("color: #dc3545;");
+        showError("Please enter a password");
         return;
     }
-
-    // Проверяем локально, чтобы убедиться, что учетные данные действительны
-    bool localCheck = m_dbManager->checkUser(m_username, password);
+    bool validCredentials = m_dbManager->checkUser(m_username, password);
     qDebug() << "Local credential check for user:" << m_username 
-             << "result:" << (localCheck ? "valid" : "invalid");
+             << "result:" << (validCredentials ? "valid" : "invalid");
 
-    if (localCheck) {
-        // Создаем сетевого клиента и подключаемся к серверу
+    if (validCredentials) {
         auto networkClient = NetworkClientFactory::createTcpClient(nullptr);
+        if (!networkClient) {
+            showError("Failed to create network client");
+            return;
+        }
         
-        // Подробно логируем процесс подключения
-        qDebug() << "Connecting to server with username:" << m_username;
-                 
-        networkClient->connectToServer("127.0.0.1", 12345, m_username.toStdString(), password.toStdString()); 
+        qDebug() << "Creating chat window with username:" << m_username;
+
+        auto* chatWindow = new ChatWindow(std::move(networkClient));
+        chatWindow->setAttribute(Qt::WA_DeleteOnClose)
+        connect(chatWindow, &ChatWindow::loggedOut, [this]() {
+            QDialog::accept();
+        });
+        if (auto* controller = dynamic_cast<ChatController*>(chatWindow->getController())) {
+            controller->setUsername(m_username.toStdString());
+            controller->connectToServer("127.0.0.1", 12345, 
+                                     m_username.toStdString(), 
+                                     password.toStdString());
+        }
         
-        // Создаем и показываем окно чата
-        ChatWindow* chatWindow = new ChatWindow(std::move(networkClient));
-        chatWindow->setAttribute(Qt::WA_DeleteOnClose);  // Автоматически удалять окно при закрытии
+        emit chatWindowOpened(chatWindow);
         chatWindow->show();
         
-        // Отправляем сигнал о создании окна чата
-        emit chatWindowOpened(chatWindow);
-        
-        accept();  // Закрываем диалог ввода пароля
+        accept();  
     } else {
-        m_statusLabel->setText("Incorrect password");
-        m_statusLabel->setStyleSheet("color: #dc3545;");
+        showError("Incorrect password");
     }
 }

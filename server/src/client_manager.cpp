@@ -8,6 +8,8 @@ ClientManager::ClientManager() {
 }
 
 void ClientManager::addClient(QUuid clientId, std::unique_ptr<IClientSession> client) {
+    std::lock_guard<std::mutex> lock(m_clientsMutex);
+    
     qDebug() << "Client added, UUID:" << clientId;
     m_clients.emplace(clientId, std::move(client));
     auto* sessionPtr = m_clients.at(clientId).get();
@@ -29,20 +31,50 @@ void ClientManager::addClient(QUuid clientId, std::unique_ptr<IClientSession> cl
 }
 
 void ClientManager::removeClient(QUuid clientId) {
+    std::lock_guard<std::mutex> lock(m_clientsMutex);
+    
     qDebug() << "Removing client, UUID:" << clientId;
     m_clients.erase(clientId);
 }
 
-void ClientManager::broadcastMessage(const std::string& message, QUuid senderId, const std::string& username) {
-    Message msg;
-    msg.senderId = senderId;
-    msg.username = username;
-    msg.text = message;
-    msg.timestamp = QDateTime::currentDateTime();
-    addMessage(msg);
-    for (const auto& pair : m_clients) {
-        pair.second->sendMessage(msg);
+void ClientManager::broadcastMessage(const Message& message) {
+    std::lock_guard<std::mutex> lock(m_clientsMutex);
+    
+    addMessage(message);
+    for (const auto& [id, client] : m_clients) {
+        if (client->isAuthenticated()) {
+            client->sendMessage(message);
+        }
     }
+}
+
+std::vector<std::string> ClientManager::getUsernames() const {
+    std::lock_guard<std::mutex> lock(m_clientsMutex);
+    
+    std::vector<std::string> usernames;
+    usernames.reserve(m_clients.size());
+    
+    for (const auto& [id, client] : m_clients) {
+        if (client->isAuthenticated()) {
+            usernames.push_back(client->username());
+        }
+    }
+    
+    return usernames;
+}
+
+void ClientManager::sendMessageToClient(QUuid clientId, const Message& message) {
+    std::lock_guard<std::mutex> lock(m_clientsMutex);
+    
+    auto it = m_clients.find(clientId);
+    if (it != m_clients.end() && it->second->isAuthenticated()) {
+        it->second->sendMessage(message);
+    }
+}
+
+size_t ClientManager::getClientCount() const {
+    std::lock_guard<std::mutex> lock(m_clientsMutex);
+    return m_clients.size();
 }
 
 void ClientManager::addMessage(const Message& message) {
@@ -57,25 +89,8 @@ const std::vector<Message>& ClientManager::getChatHistory() const {
 }
 
 void ClientManager::clear() {
+    std::lock_guard<std::mutex> lock(m_clientsMutex);
+    
     m_clients.clear();
     m_chatHistory.clear();
-}
-
-const std::unordered_map<QUuid, std::unique_ptr<IClientSession>, QUuidHash>& ClientManager::getClients() const {
-    return m_clients;
-}
-
-std::vector<std::string> ClientManager::getUsernames() const {
-    std::vector<std::string> usernames;
-    for (const auto& [id, client] : m_clients) {
-        usernames.push_back(client->username());
-    }
-    return usernames;
-}
-
-void ClientManager::sendMessageToClient(QUuid clientId, const Message& message) {
-    auto it = m_clients.find(clientId);
-    if (it != m_clients.end()) {
-        it->second->sendMessage(message);
-    }
 }

@@ -3,12 +3,24 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
+#include <memory>
 #include "database_manager.h"
 
-class LoginWindow : public QMainWindow {
+class IAuthView {
+public:
+    virtual ~IAuthView() = default;
+    virtual void displayErrorMessage(const QString& message) = 0;
+    virtual void clearErrorMessage() = 0;
+};
+
+class LoginWindow : public QMainWindow, public IAuthView {
     Q_OBJECT
 public:
-    explicit LoginWindow(DatabaseManager* dbManager, QWidget* parent = nullptr);
+    explicit LoginWindow(IDatabase* dbManager, QWidget* parent = nullptr);
+    ~LoginWindow() override = default;
+
+    void displayErrorMessage(const QString& message) override;
+    void clearErrorMessage() override;
 
 signals:
     void chatWindowClosed();  
@@ -21,7 +33,7 @@ private:
     void setupUi();
     void applyStyles();
 
-    DatabaseManager* m_dbManager;
+    IDatabase* m_dbManager;
     std::unique_ptr<QLineEdit> m_usernameField;
     std::unique_ptr<QPushButton> m_loginButton;
     std::unique_ptr<QPushButton> m_registerButton;
