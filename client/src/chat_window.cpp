@@ -14,6 +14,7 @@ ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* p
     applyStyles();
 
     m_controller = std::make_unique<ChatController>(std::move(networkClient), this);
+    
     connectSignals();
     updateConnectionStatus(false);
 }
@@ -28,15 +29,27 @@ void ChatWindow::displaySystemMessage(const std::string& message) {
 }
 
 void ChatWindow::displayChatMessage(const Message& msg) {
-    std::string displayName = (msg.username == m_controller->username()) ? "You" : msg.username;
-    QString formattedMessage = QString::fromStdString(
-        "[" + msg.timestamp.toString("hh:mm:ss").toStdString() + "] " +
-        displayName + ": " + msg.text);
+    QString displayName = (msg.username == m_controller->username()) 
+        ? "You" 
+        : QString::fromStdString(msg.username);
+        
+    QString timestamp = msg.timestamp.toString("hh:mm:ss");
+    QString messageText = QString::fromStdString(msg.text);
+    
+    QString formattedMessage = QString("[%1] %2: %3")
+        .arg(timestamp)
+        .arg(displayName)
+        .arg(messageText);
+    
     auto* item = new QListWidgetItem(formattedMessage, m_chatHistory.get());
     
     if (msg.username == m_controller->username()) {
         item->setBackground(QColor(200, 230, 255)); 
     }
+    
+    QFont messageFont = item->font();
+    messageFont.setFamily("Segoe UI Emoji, Noto Color Emoji, Apple Color Emoji, Arial");
+    item->setFont(messageFont);
     
     m_chatHistory->addItem(item);
     m_chatHistory->scrollToBottom();
@@ -180,6 +193,7 @@ void ChatWindow::connectSignals() {
     connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);
     connect(m_logoutButton.get(), &QPushButton::clicked, this, &ChatWindow::logout); 
     connect(m_usersButton.get(), &QPushButton::clicked, this, &ChatWindow::openUserListWindow);
+
     if (auto* networkClient = m_controller->getNetworkClient()) {
         connect(networkClient, &NetworkClient::connectionStatusChanged,
                 this, &ChatWindow::updateConnectionStatus);

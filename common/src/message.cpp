@@ -22,8 +22,9 @@ bool Message::operator!=(const Message& other) const noexcept {
 
 QDataStream& operator<<(QDataStream& stream, const Message& msg) {
     stream.setVersion(QDataStream::Qt_6_0);
-    stream << msg.senderId << QString::fromStdString(msg.username) 
-           << QString::fromStdString(msg.text) << msg.timestamp
+    QString username = QString::fromStdString(msg.username);
+    QString text = QString::fromStdString(msg.text);
+    stream << msg.senderId << username << text << msg.timestamp
            << static_cast<int>(msg.type);
     
     if (msg.type == MessageType::UserList) {
@@ -36,7 +37,7 @@ QDataStream& operator<<(QDataStream& stream, const Message& msg) {
 }
 
 QDataStream& operator>>(QDataStream& stream, Message& msg) {
-    stream.setVersion(QDataStream::Qt_6_0); 
+    stream.setVersion(QDataStream::Qt_6_0);
     QString username, text;
     int messageType;
     stream >> msg.senderId >> username >> text >> msg.timestamp >> messageType;
@@ -47,8 +48,10 @@ QDataStream& operator>>(QDataStream& stream, Message& msg) {
     if (msg.type == MessageType::UserList) {
         int size;
         stream >> size;
+        
         msg.userList.clear();
         msg.userList.reserve(size);
+        
         for (int i = 0; i < size; ++i) {
             QString user;
             stream >> user;

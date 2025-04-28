@@ -3,13 +3,14 @@
 
 EmojiWindow::EmojiWindow(QWidget* parent) : QDialog(parent) {
     setWindowTitle("Emoji Picker");
-    setFixedSize(300, 300);
+    setFixedSize(400, 350);
 
     m_emojis = {
-        "😊", "😂", "😍", "😎", "🥳",
-        "😢", "😡", "😴", "🤓", "😇",
-        "👍", "👎", "🙌", "👏", "✌️",
-        "❤️", "💔", "⭐", "🔥", "💡"
+        "😊", "😂", "😍", "😎", "🥳", "😢", "😡", "😴",
+        "👍", "👎", "🙌", "👏", "✌️", "👋", "🤝", "👊",
+        "❤️", "💔", "💯", "⭐", "🔥", "💡", "🤓", "😇",
+        "🍕", "🎮", "🎵", "🎬", "⚽", "🏆", "🎉", "🎁",
+        "🐱", "🐶", "🦄", "🌈", "💻", "📱", "💰", "🚀"
     };
 
     setupUi();
@@ -32,9 +33,9 @@ void EmojiWindow::applyStyles() {
             background-color: #ffffff;
             border: 1px solid #dcdcdc;
             border-radius: 8px;
-            font-size: 20px;
+            font-size: 24px;
             padding: 8px;
-            font-family: 'Noto Color Emoji', 'Segoe UI Emoji', 'Arial', sans-serif;
+            font-family: 'Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji', 'Arial', sans-serif;
         }
         QPushButton:hover {
             background-color: #e0e0e0;
@@ -45,11 +46,14 @@ void EmojiWindow::applyStyles() {
     )");
 
     QFont emojiFont;
-    emojiFont.setFamily("Noto Color Emoji, Segoe UI Emoji, Arial");
+    emojiFont.setFamily("Segoe UI Emoji, Noto Color Emoji, Apple Color Emoji, Arial");
+    emojiFont.setPointSize(16); 
+    
     for (int i = 0; i < m_gridLayout->count(); ++i) {
         auto* button = qobject_cast<QPushButton*>(m_gridLayout->itemAt(i)->widget());
         if (button) {
             button->setFont(emojiFont);
+            button->setMinimumSize(45, 45);
         }
     }
 }
@@ -57,15 +61,18 @@ void EmojiWindow::applyStyles() {
 void EmojiWindow::addEmojiButtons() {
     int row = 0;
     int col = 0;
-    const int maxCols = 5;
+    const int maxCols = 8; 
 
     for (const auto& emoji : m_emojis) {
         auto* button = new QPushButton(emoji, this);
-        button->setFixedSize(50, 50);
+        button->setFixedSize(45, 45);
+        button->setToolTip(emoji);
+        
         connect(button, &QPushButton::clicked, this, [this, emoji]() {
             emit emojiSelected(emoji);
             accept(); 
         });
+        
         m_gridLayout->addWidget(button, row, col);
         col++;
         if (col >= maxCols) {
@@ -73,4 +80,6 @@ void EmojiWindow::addEmojiButtons() {
             row++;
         }
     }
+    
+    m_gridLayout->setSpacing(5);
 }

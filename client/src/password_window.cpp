@@ -92,7 +92,7 @@ void PasswordWindow::onSubmitClicked() {
         qDebug() << "Creating chat window with username:" << m_username;
 
         auto* chatWindow = new ChatWindow(std::move(networkClient));
-        chatWindow->setAttribute(Qt::WA_DeleteOnClose)
+        chatWindow->setAttribute(Qt::WA_DeleteOnClose);
         connect(chatWindow, &ChatWindow::loggedOut, [this]() {
             QDialog::accept();
         });
