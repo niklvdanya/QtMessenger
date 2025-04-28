@@ -22,8 +22,10 @@ public:
     void sendMessage(std::string_view message) override;
     void setMessageCallback(const MessageCallback& callback) override;
     void disconnect() override; 
+    void requestUserList();
 
 signals:
+    void userListReceived(const std::vector<QString>& userList);
     void messageReceived(const Message& msg);
     void disconnected();
     void connectionStatusChanged(bool connected);

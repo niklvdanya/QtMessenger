@@ -59,6 +59,8 @@ void ChatWindow::setupUi() {
     m_sendButton = std::make_unique<QPushButton>("Send", this);
     m_emojiButton = std::make_unique<QPushButton>("😊", this);
     m_logoutButton = std::make_unique<QPushButton>("Log out", this); 
+    m_usersButton = std::make_unique<QPushButton>("👥", this);
+    m_usersButton->setObjectName("usersButton");
     m_statusLabel = std::make_unique<QLabel>("Disconnected", this);
 
     auto* centralWidget = new QWidget(this);
@@ -74,7 +76,7 @@ void ChatWindow::setupUi() {
     inputLayout->addWidget(m_emojiButton.get());
     inputLayout->addWidget(m_inputField.get());
     inputLayout->addWidget(m_sendButton.get());
-
+    inputLayout->addWidget(m_usersButton.get());
     mainLayout->addLayout(topLayout);  
     mainLayout->addWidget(m_chatHistory.get());
     mainLayout->addLayout(inputLayout);
@@ -139,7 +141,7 @@ void ChatWindow::applyStyles() {
             background-color: #d0d0d0;
         }
         QPushButton#logoutButton {
-            background-color: #dc3545;  /* Красный цвет для кнопки выхода */
+            background-color: #dc3545; 
         }
         QPushButton#logoutButton:hover {
             background-color: #c82333;
@@ -150,6 +152,19 @@ void ChatWindow::applyStyles() {
         QLabel {
             font-size: 12px;
             color: #666666;
+        }
+        QPushButton#usersButton {
+            background-color: #ffffff;
+            color: black;
+            font-size: 20px;
+            padding: 8px;
+            min-width: 40px;
+        }
+        QPushButton#usersButton:hover {
+            background-color: #e0e0e0;
+        }
+        QPushButton#usersButton:pressed {
+            background-color: #d0d0d0;
         }
     )");
 
@@ -162,11 +177,14 @@ void ChatWindow::connectSignals() {
     connect(m_inputField.get(), &QLineEdit::returnPressed, this, &ChatWindow::sendMessage);
     connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);
     connect(m_logoutButton.get(), &QPushButton::clicked, this, &ChatWindow::logout); 
+    connect(m_usersButton.get(), &QPushButton::clicked, this, &ChatWindow::openUserListWindow);
     if (auto* networkClient = m_controller->getNetworkClient()) {
         connect(networkClient, &NetworkClient::messageReceived,
                 this, &ChatWindow::handleMessageReceived);
         connect(networkClient, &NetworkClient::connectionStatusChanged,
                 this, &ChatWindow::updateConnectionStatus);
+        connect(networkClient, &NetworkClient::userListReceived,
+                this, &ChatWindow::updateUserList);
     }
 }
 
@@ -209,5 +227,26 @@ void ChatWindow::logout() {
         }
         emit loggedOut();
         close();
+    }
+}
+
+void ChatWindow::openUserListWindow() {
+    if (!m_userListWindow) {
+        m_userListWindow = std::make_unique<UserListWindow>(this);
+    }
+    requestUserList();
+    
+    m_userListWindow->show();
+}
+
+void ChatWindow::requestUserList() {
+    if (auto* networkClient = m_controller->getNetworkClient()) {
+        networkClient->requestUserList();
+    }
+}
+
+void ChatWindow::updateUserList(const std::vector<QString>& userList) {
+    if (m_userListWindow) {
+        m_userListWindow->updateUserList(userList);
     }
 }

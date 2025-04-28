@@ -19,6 +19,8 @@ public:
 
     void addMessage(const Message& message);
     const std::vector<Message>& getChatHistory() const;
+    std::vector<std::string> getUsernames() const override;
+    void sendMessageToClient(QUuid clientId, const Message& message) override;
 
 private:
     std::unordered_map<QUuid, std::unique_ptr<IClientSession>, QUuidHash> m_clients;

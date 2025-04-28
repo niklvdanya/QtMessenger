@@ -64,3 +64,18 @@ void ClientManager::clear() {
 const std::unordered_map<QUuid, std::unique_ptr<IClientSession>, QUuidHash>& ClientManager::getClients() const {
     return m_clients;
 }
+
+std::vector<std::string> ClientManager::getUsernames() const {
+    std::vector<std::string> usernames;
+    for (const auto& [id, client] : m_clients) {
+        usernames.push_back(client->username());
+    }
+    return usernames;
+}
+
+void ClientManager::sendMessageToClient(QUuid clientId, const Message& message) {
+    auto it = m_clients.find(clientId);
+    if (it != m_clients.end()) {
+        it->second->sendMessage(message);
+    }
+}

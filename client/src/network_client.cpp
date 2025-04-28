@@ -100,9 +100,33 @@ void NetworkClient::onReadyRead() {
     processBuffer();
 }
 
+void NetworkClient::requestUserList() {
+    if (!m_socket || m_socket->state() != QAbstractSocket::ConnectedState) {
+        qDebug() << "Not connected to server";
+        return;
+    }
+    Message msg;
+    msg.senderId = QUuid::createUuid();
+    msg.username = m_username;
+    msg.text = "REQUEST_USER_LIST"; 
+    msg.timestamp = QDateTime::currentDateTime();
+    msg.type = MessageType::System;  
+
+    QByteArray block;
+    QDataStream out(&block, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << msg;
+    
+    m_socket->write(block);
+    m_socket->flush();
+    
+    qDebug() << "Sent user list request to server";
+}
+
 void NetworkClient::processBuffer() {
     QDataStream stream(&m_receivedBuffer, QIODevice::ReadOnly);
     stream.setVersion(QDataStream::Qt_6_0);
+
     qint64 startPos = stream.device()->pos();
     while (!stream.atEnd()) {
         qint64 currentPos = stream.device()->pos();
@@ -112,14 +136,19 @@ void NetworkClient::processBuffer() {
             stream.device()->seek(currentPos);
             break;
         }
-
-        emit messageReceived(msg);
-
-        if (m_messageCallback) {
-            m_messageCallback(msg.username, msg.text);
+        if (msg.type == MessageType::UserList) {
+            std::vector<QString> userList;
+            for (const auto& user : msg.userList) {
+                userList.push_back(QString::fromStdString(user));
+            }
+            emit userListReceived(userList);
+        } else {
+            emit messageReceived(msg);
+            if (m_messageCallback) {
+                m_messageCallback(msg.username, msg.text);
+            }
         }
     }
-
     qint64 processedBytes = stream.device()->pos() - startPos;
     if (processedBytes > 0) {
         m_receivedBuffer.remove(0, processedBytes);
