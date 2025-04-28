@@ -2,10 +2,20 @@
 #include "database_manager.h"
 #include <QApplication>
 #include <QDebug>
+#include <QFile>
+#include <QStyle>
+#include <QStyleFactory>
+#include <QFont>
 #include <memory>
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
+    
+    app.setStyle(QStyleFactory::create("Fusion"));
+    QFont defaultFont;
+    defaultFont.setFamily("Segoe UI");
+    defaultFont.setPointSize(10);
+    app.setFont(defaultFont);
 
     try {
         auto dbManager = std::make_unique<DatabaseManager>();

@@ -29,12 +29,12 @@ public slots:
     void sendMessage();
     void openEmojiWindow();
     void insertEmoji(const QString& emoji);
-    void logout();  
+    void logout();
     void openUserListWindow();
     void requestUserList();
 
 signals:
-    void loggedOut();  
+    void loggedOut();
 
 private:
     void setupUi();

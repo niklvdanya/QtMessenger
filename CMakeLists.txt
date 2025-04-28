@@ -9,7 +9,14 @@ set(CMAKE_AUTOUIC ON)
 
 cmake_policy(SET CMP0167 NEW)
 
-find_package(Qt6 COMPONENTS Core Widgets Network Sql REQUIRED)
+find_package(Qt6 COMPONENTS 
+    Core 
+    Widgets 
+    Network 
+    Sql 
+    Gui 
+    REQUIRED
+)
 find_package(Boost REQUIRED COMPONENTS system)
 
 add_library(common_lib STATIC
@@ -19,7 +26,11 @@ add_library(common_lib STATIC
     common/include/database_manager.h
 )
 target_include_directories(common_lib PUBLIC common/include)
-target_link_libraries(common_lib PUBLIC Qt6::Core Qt6::Sql)
+target_link_libraries(common_lib PUBLIC 
+    Qt6::Core 
+    Qt6::Sql 
+    Qt6::Widgets
+)
 
 add_executable(chat_server_mt
     server/src/main_multithreaded.cpp
@@ -34,8 +45,17 @@ add_executable(chat_server_mt
     server/src/message_handler.cpp
     server/include/message_handler.h
 )
-target_include_directories(chat_server_mt PRIVATE server/include common/include)
-target_link_libraries(chat_server_mt PRIVATE common_lib Qt6::Core Qt6::Network Qt6::Sql)
+target_include_directories(chat_server_mt PRIVATE 
+    server/include 
+    common/include
+)
+target_link_libraries(chat_server_mt PRIVATE 
+    common_lib 
+    Qt6::Core 
+    Qt6::Network 
+    Qt6::Sql 
+    Qt6::Widgets
+)
 
 add_executable(chat_client
     client/src/main.cpp
@@ -61,5 +81,15 @@ add_executable(chat_client
     client/src/user_list_window.cpp
     client/include/user_list_window.h
 )
-target_include_directories(chat_client PRIVATE client/include common/include)
-target_link_libraries(chat_client PRIVATE common_lib Qt6::Core Qt6::Widgets Qt6::Network Qt6::Sql)
+
+target_include_directories(chat_client PRIVATE 
+    client/include 
+    common/include
+)
+target_link_libraries(chat_client PRIVATE 
+    common_lib 
+    Qt6::Core 
+    Qt6::Widgets 
+    Qt6::Network 
+    Qt6::Sql
+)

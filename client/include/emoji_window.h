@@ -16,7 +16,7 @@ signals:
 private:
     void setupUi();
     void applyStyles();
-    void addEmojiButtons();
+    void addEmojiButtonsToGrid(const std::vector<QString>& emojis, QGridLayout* grid, int columns);
 
     std::vector<QString> m_emojis;
     QGridLayout* m_gridLayout{nullptr};
