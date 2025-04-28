@@ -1,22 +1,25 @@
 #pragma once
-#include <QUuid>
-#include <QDateTime>
-#include <QDataStream>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
-enum class MessageType {
-    Chat,      
-    UserList,  
-    System      
+#include <QDataStream>
+#include <QDateTime>
+#include <QUuid>
+
+enum class MessageType
+{
+    Chat,
+    UserList,
+    System
 };
 
-class Message {
+class Message
+{
 public:
     Message() = default;
     explicit Message(const QUuid& senderId, std::string username, std::string text);
-    
+
     QUuid senderId;
     std::string username;
     std::string text;

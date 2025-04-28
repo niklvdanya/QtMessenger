@@ -1,12 +1,14 @@
 #pragma once
-#include "inetwork_client.h"
-#include "network_client.h"
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
-#include <functional>
 
-class IChatView {
+#include "inetwork_client.h"
+#include "network_client.h"
+
+class IChatView
+{
 public:
     virtual ~IChatView() = default;
     virtual void displaySystemMessage(const std::string& message) = 0;
@@ -17,19 +19,20 @@ public:
     virtual void updateUserList(const std::vector<QString>& userList) = 0;
 };
 
-class ChatController {
+class ChatController
+{
 public:
     ChatController(std::unique_ptr<INetworkClient> networkClient, IChatView* view);
-    
+
     void sendMessage(const std::string& message);
     void sendMessage();
     void requestUserList();
     void setUsername(const std::string& username);
     std::string username() const;
     NetworkClient* getNetworkClient() const;
-    
-    void connectToServer(const std::string& host, uint16_t port, 
-                        const std::string& username, const std::string& password);
+
+    void connectToServer(const std::string& host, uint16_t port, const std::string& username,
+                         const std::string& password);
     void disconnect();
 
 private:

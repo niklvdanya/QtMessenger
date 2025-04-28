@@ -1,16 +1,19 @@
-#include "login_window.h"
-#include "database_manager.h"
+#include <memory>
+
 #include <QApplication>
 #include <QDebug>
 #include <QFile>
+#include <QFont>
 #include <QStyle>
 #include <QStyleFactory>
-#include <QFont>
-#include <memory>
 
-int main(int argc, char* argv[]) {
+#include "database_manager.h"
+#include "login_window.h"
+
+int main(int argc, char* argv[])
+{
     QApplication app(argc, argv);
-    
+
     app.setStyle(QStyleFactory::create("Fusion"));
     QFont defaultFont;
     defaultFont.setFamily("Segoe UI");

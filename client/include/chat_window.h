@@ -1,18 +1,21 @@
 #pragma once
-#include <QMainWindow>
-#include <QListWidget>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QMainWindow>
+#include <QPushButton>
+
 #include "chat_controller.h"
 #include "emoji_window.h"
 #include "message.h"
 #include "user_list_window.h"
 
-class ChatWindow : public QMainWindow, public IChatView {
+class ChatWindow : public QMainWindow, public IChatView
+{
     Q_OBJECT
 public:
     explicit ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent = nullptr);
@@ -40,7 +43,7 @@ private:
     void setupUi();
     void connectSignals();
     void applyStyles();
-    
+
     std::unique_ptr<QListWidget> m_chatHistory;
     std::unique_ptr<QLineEdit> m_inputField;
     std::unique_ptr<QPushButton> m_sendButton;

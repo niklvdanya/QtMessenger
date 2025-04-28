@@ -1,31 +1,34 @@
 #pragma once
-#include <unordered_map>
 #include <memory>
-#include <QUuid>
-#include <vector>
 #include <mutex>
+#include <unordered_map>
+#include <vector>
+
+#include <QUuid>
+
 #include "client_session_interface.h"
 #include "iserver.h"
-#include "quuid_hash.h"
 #include "message.h"
+#include "quuid_hash.h"
 
-class ClientManager : public IClientManager {
+class ClientManager : public IClientManager
+{
 public:
     ClientManager();
     ~ClientManager() override = default;
-    
+
     ClientManager(const ClientManager&) = delete;
     ClientManager& operator=(const ClientManager&) = delete;
     ClientManager(ClientManager&&) = delete;
     ClientManager& operator=(ClientManager&&) = delete;
-    
+
     void addClient(QUuid clientId, std::unique_ptr<IClientSession> client) override;
     void removeClient(QUuid clientId) override;
     void broadcastMessage(const Message& message) override;
     std::vector<std::string> getUsernames() const override;
     void sendMessageToClient(QUuid clientId, const Message& message) override;
     size_t getClientCount() const override;
-    
+
     void clear();
     const std::vector<Message>& getChatHistory() const;
     void addMessage(const Message& message);

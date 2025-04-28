@@ -1,10 +1,13 @@
+#include <memory>
+
 #include <QCoreApplication>
 #include <QDebug>
-#include <memory>
-#include "multithreaded_server.h"
-#include "database_manager.h"
 
-int main(int argc, char *argv[]) {
+#include "database_manager.h"
+#include "multithreaded_server.h"
+
+int main(int argc, char* argv[])
+{
     QCoreApplication a(argc, argv);
 
     try {
@@ -16,28 +19,23 @@ int main(int argc, char *argv[]) {
 
         const unsigned short port = 12345;
         const int thread_count = 4;
-        
+
         MultithreadedServer server(port, thread_count, dbManager.get());
 
         QObject::connect(&server, &MultithreadedServer::newConnection,
-                        [](QUuid clientId) {
-                            qDebug() << "New connection:" << clientId;
-                        });
+                         [](QUuid clientId) { qDebug() << "New connection:" << clientId; });
 
         QObject::connect(&server, &MultithreadedServer::clientDisconnected,
-                        [](QUuid clientId) {
-                            qDebug() << "Client disconnected:" << clientId;
-                        });
+                         [](QUuid clientId) { qDebug() << "Client disconnected:" << clientId; });
 
-        QObject::connect(&server, &MultithreadedServer::messageReceived,
-                        [](const Message& message) {
-                            qDebug() << "Message from" << QString::fromStdString(message.username) 
-                                    << "(" << message.senderId << "):" 
-                                    << QString::fromStdString(message.text);
-                        });
+        QObject::connect(
+            &server, &MultithreadedServer::messageReceived, [](const Message& message) {
+                qDebug() << "Message from" << QString::fromStdString(message.username) << "("
+                         << message.senderId << "):" << QString::fromStdString(message.text);
+            });
 
         server.start(port);
-        
+
         qDebug() << "Server started on port" << port;
 
         return a.exec();

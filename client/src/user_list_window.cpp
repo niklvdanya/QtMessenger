@@ -1,17 +1,20 @@
 #include "user_list_window.h"
+
 #include <QLabel>
 #include <QLineEdit>
-#include <QTabWidget>
 #include <QPushButton>
+#include <QTabWidget>
 
-UserListWindow::UserListWindow(QWidget* parent) : QDialog(parent) {
+UserListWindow::UserListWindow(QWidget* parent) : QDialog(parent)
+{
     setWindowTitle("Online Users");
     setFixedSize(250, 300);
     setupUi();
     applyStyles();
 }
 
-void UserListWindow::setupUi() {
+void UserListWindow::setupUi()
+{
     setWindowTitle("Online Users");
     setFixedSize(350, 600);
 
@@ -33,7 +36,7 @@ void UserListWindow::setupUi() {
     searchField->setPlaceholderText("Search users...");
     searchField->setObjectName("searchField");
     searchField->setMinimumHeight(40);
-    
+
     searchLayout->addWidget(searchIcon);
     searchLayout->addWidget(searchField);
 
@@ -47,7 +50,7 @@ void UserListWindow::setupUi() {
     m_userListWidget->setFrameShape(QFrame::NoFrame);
     m_userListWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     m_userListWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    
+
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(10);
     mainLayout->setContentsMargins(15, 15, 15, 15);
@@ -59,33 +62,33 @@ void UserListWindow::setupUi() {
     connect(searchField, &QLineEdit::textChanged, this, [this, searchField, counterLabel]() {
         QString searchText = searchField->text().toLower();
         int visibleCount = 0;
-        
+
         for (int i = 0; i < m_userListWidget->count(); ++i) {
             QListWidgetItem* item = m_userListWidget->item(i);
             QWidget* widget = m_userListWidget->itemWidget(item);
-            
+
             if (widget) {
                 QLabel* nameLabel = widget->findChild<QLabel*>("nameLabel");
                 if (nameLabel) {
                     bool visible = nameLabel->text().toLower().contains(searchText);
                     item->setHidden(!visible);
-                    
+
                     if (visible) {
                         visibleCount++;
                     }
                 }
             }
         }
-        
-        counterLabel->setText(QString("%1 %2")
-            .arg(visibleCount)
-            .arg(visibleCount == 1 ? "user" : "users"));
+
+        counterLabel->setText(
+            QString("%1 %2").arg(visibleCount).arg(visibleCount == 1 ? "user" : "users"));
     });
-    
+
     applyStyles();
 }
 
-void UserListWindow::applyStyles() {
+void UserListWindow::applyStyles()
+{
     setStyleSheet(R"(
         QDialog {
             background-color: white;
@@ -145,27 +148,27 @@ void UserListWindow::applyStyles() {
     )");
 }
 
-void UserListWindow::updateUserList(const std::vector<QString>& userList) {
+void UserListWindow::updateUserList(const std::vector<QString>& userList)
+{
     m_userListWidget->clear();
-    
+
     QLabel* counterLabel = findChild<QLabel*>("counterLabel");
     if (counterLabel) {
-        counterLabel->setText(QString("%1 %2")
-            .arg(userList.size())
-            .arg(userList.size() == 1 ? "user" : "users"));
+        counterLabel->setText(
+            QString("%1 %2").arg(userList.size()).arg(userList.size() == 1 ? "user" : "users"));
     }
-    
+
     for (const auto& username : userList) {
         auto* userWidget = new QWidget(m_userListWidget.get());
         auto* userLayout = new QHBoxLayout(userWidget);
         userLayout->setContentsMargins(5, 10, 5, 10);
         userLayout->setSpacing(10);
-        
+
         auto* avatarLabel = new QLabel(userWidget);
         avatarLabel->setFixedSize(50, 50);
         avatarLabel->setAlignment(Qt::AlignCenter);
         avatarLabel->setObjectName("avatarLabel");
-        
+
         QChar firstLetter = username.at(0).toUpper();
         avatarLabel->setText(QString(firstLetter));
 

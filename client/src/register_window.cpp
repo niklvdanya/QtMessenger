@@ -1,60 +1,63 @@
 #include "register_window.h"
+
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QTimer>
 
 RegisterWindow::RegisterWindow(IDatabase* dbManager, QWidget* parent)
-    : QDialog(parent), m_dbManager(dbManager) {
+    : QDialog(parent), m_dbManager(dbManager)
+{
     setWindowTitle("Register");
     setFixedSize(300, 250);
     setupUi();
     applyStyles();
 }
 
-void RegisterWindow::setupUi() {
+void RegisterWindow::setupUi()
+{
     setWindowTitle("Create Account");
     setFixedSize(400, 550);
-    
+
     auto* mainContainer = new QWidget(this);
     mainContainer->setObjectName("mainContainer");
     mainContainer->setFixedWidth(350);
-    
+
     auto* titleLabel = new QLabel("Create Account", this);
     titleLabel->setObjectName("titleLabel");
     titleLabel->setAlignment(Qt::AlignCenter);
-    
+
     auto* usernameContainer = new QWidget(this);
     auto* usernameLayout = new QHBoxLayout(usernameContainer);
     usernameLayout->setContentsMargins(0, 0, 0, 0);
     usernameLayout->setSpacing(10);
-    
+
     auto* usernameIcon = new QLabel("👤", this);
     usernameIcon->setFixedSize(30, 30);
     usernameIcon->setAlignment(Qt::AlignCenter);
     usernameIcon->setObjectName("usernameIcon");
-    
+
     m_usernameField = std::make_unique<QLineEdit>(this);
     m_usernameField->setPlaceholderText("Choose a username");
     m_usernameField->setMinimumHeight(50);
-    
+
     usernameLayout->addWidget(usernameIcon);
     usernameLayout->addWidget(m_usernameField.get());
-    
+
     auto* passwordContainer = new QWidget(this);
     auto* passwordLayout = new QHBoxLayout(passwordContainer);
     passwordLayout->setContentsMargins(0, 0, 0, 0);
     passwordLayout->setSpacing(10);
-    
+
     auto* passwordIcon = new QLabel("🔒", this);
     passwordIcon->setFixedSize(30, 30);
     passwordIcon->setAlignment(Qt::AlignCenter);
     passwordIcon->setObjectName("passwordIcon");
-    
+
     m_passwordField = std::make_unique<QLineEdit>(this);
     m_passwordField->setEchoMode(QLineEdit::Password);
     m_passwordField->setPlaceholderText("Choose a password");
     m_passwordField->setMinimumHeight(50);
-    
+
     passwordLayout->addWidget(passwordIcon);
     passwordLayout->addWidget(m_passwordField.get());
 
@@ -65,7 +68,7 @@ void RegisterWindow::setupUi() {
     m_registerButton = std::make_unique<QPushButton>("Register", this);
     m_registerButton->setMinimumHeight(50);
     m_registerButton->setCursor(Qt::PointingHandCursor);
-    
+
     auto* cancelButton = new QPushButton("Cancel", this);
     cancelButton->setMinimumHeight(50);
     cancelButton->setCursor(Qt::PointingHandCursor);
@@ -74,7 +77,7 @@ void RegisterWindow::setupUi() {
     auto* containerLayout = new QVBoxLayout(mainContainer);
     containerLayout->setSpacing(15);
     containerLayout->setContentsMargins(25, 25, 25, 25);
-    
+
     containerLayout->addWidget(titleLabel, 0, Qt::AlignCenter);
     containerLayout->addSpacing(20);
     containerLayout->addWidget(usernameContainer);
@@ -89,18 +92,20 @@ void RegisterWindow::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
     mainLayout->setContentsMargins(20, 20, 20, 20);
-    
+
     mainLayout->addWidget(mainContainer, 0, Qt::AlignCenter);
-    
-    connect(m_registerButton.get(), &QPushButton::clicked, this, &RegisterWindow::onRegisterClicked);
+
+    connect(m_registerButton.get(), &QPushButton::clicked, this,
+            &RegisterWindow::onRegisterClicked);
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
 
     applyStyles();
 }
 
-void RegisterWindow::applyStyles() {
+void RegisterWindow::applyStyles()
+{
     setStyleSheet("QDialog { background-color: #f0f2f5; }");
-    
+
     QWidget* mainContainer = findChild<QWidget*>("mainContainer");
     if (mainContainer) {
         mainContainer->setStyleSheet(R"(
@@ -133,7 +138,7 @@ void RegisterWindow::applyStyles() {
             color: #179cde;
         )");
     }
-    
+
     if (m_statusLabel) {
         m_statusLabel->setStyleSheet(R"(
             font-size: 14px;
@@ -152,7 +157,7 @@ void RegisterWindow::applyStyles() {
         m_usernameField->setStyleSheet(inputStyle);
         m_passwordField->setStyleSheet(inputStyle);
     }
-    
+
     if (m_registerButton) {
         m_registerButton->setStyleSheet(R"(
             background-color: #179cde;
@@ -178,7 +183,8 @@ void RegisterWindow::applyStyles() {
     }
 }
 
-void RegisterWindow::showMessage(const QString& message, bool isError) {
+void RegisterWindow::showMessage(const QString& message, bool isError)
+{
     if (m_statusLabel) {
         m_statusLabel->setText(message);
         if (isError) {
@@ -195,7 +201,8 @@ void RegisterWindow::showMessage(const QString& message, bool isError) {
     }
 }
 
-void RegisterWindow::onRegisterClicked() {
+void RegisterWindow::onRegisterClicked()
+{
     QString username = m_usernameField->text().trimmed();
     QString password = m_passwordField->text().trimmed();
 

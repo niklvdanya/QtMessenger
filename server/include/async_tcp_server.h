@@ -1,12 +1,15 @@
 #pragma once
+#include <memory>
+
 #include <QObject>
 #include <QTcpServer>
-#include <memory>
-#include "iserver.h"
+
 #include "client_manager.h"
+#include "iserver.h"
 #include "message_handler.h"
 
-class AsyncTcpServer : public QTcpServer, public IServer {
+class AsyncTcpServer : public QTcpServer, public IServer
+{
     Q_OBJECT
 public:
     explicit AsyncTcpServer(QObject* parent = nullptr);

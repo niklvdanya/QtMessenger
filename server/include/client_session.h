@@ -1,12 +1,15 @@
 #pragma once
+#include <memory>
+#include <string>
+
 #include <QObject>
 #include <QTcpSocket>
-#include <memory>
 #include <QUuid>
-#include <string>
+
 #include "client_session_interface.h"
 
-class ClientSession : public QObject, public IClientSession {
+class ClientSession : public QObject, public IClientSession
+{
     Q_OBJECT
 public:
     explicit ClientSession(std::unique_ptr<QTcpSocket> socket, QObject* parent = nullptr);
@@ -14,7 +17,7 @@ public:
     QUuid uuid() const noexcept override;
     std::string username() const override;
     void sendMessage(const std::string& message) override;
-    void sendMessage(const Message& msg) override; 
+    void sendMessage(const Message& msg) override;
     void setMessageCallback(const MessageCallback& callback) override;
     void setDisconnectCallback(const DisconnectCallback& callback) override;
 

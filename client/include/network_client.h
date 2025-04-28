@@ -1,21 +1,24 @@
 #pragma once
-#include "inetwork_client.h"
-#include "auth_handler.h"
-#include <QObject>
-#include <QTcpSocket>
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string_view>
-#include <atomic>
+
+#include <QObject>
+#include <QTcpSocket>
+
+#include "auth_handler.h"
+#include "inetwork_client.h"
 #include "message.h"
 
-class NetworkClient : public QObject, public INetworkClient {
+class NetworkClient : public QObject, public INetworkClient
+{
     Q_OBJECT
 public:
     explicit NetworkClient(QObject* parent = nullptr);
     ~NetworkClient() override = default;
-    void connectToServer(std::string_view host, std::uint16_t port, 
-                        std::string_view username, std::string_view password) override;
+    void connectToServer(std::string_view host, std::uint16_t port, std::string_view username,
+                         std::string_view password) override;
     void setConnectionCallback(const ConnectionCallback& callback) override;
     void setDisconnectedCallback(const DisconnectedCallback& callback) override;
     void disconnect() override;

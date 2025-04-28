@@ -1,27 +1,31 @@
 #pragma once
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
+#include <QObject>
+#include <QUuid>
+
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <memory>
-#include <unordered_map>
-#include <QUuid>
-#include <thread>
-#include <vector>
-#include <mutex>
-#include <atomic>
-#include <QObject>
-#include <string>
-#include "message.h"
-#include "quuid_hash.h"
-#include "iserver.h"
-#include "client_manager.h"
-#include "message_handler.h"
-#include "database_manager.h"
 
-class MultithreadedServer : public QObject, public IServer {
+#include "client_manager.h"
+#include "database_manager.h"
+#include "iserver.h"
+#include "message.h"
+#include "message_handler.h"
+#include "quuid_hash.h"
+
+class MultithreadedServer : public QObject, public IServer
+{
     Q_OBJECT
 public:
-    explicit MultithreadedServer(unsigned short port, int thread_count = 4, 
-                                IDatabase* dbManager = nullptr, QObject* parent = nullptr);
+    explicit MultithreadedServer(unsigned short port, int thread_count = 4,
+                                 IDatabase* dbManager = nullptr, QObject* parent = nullptr);
     ~MultithreadedServer() override;
 
     void start(uint16_t port) override;

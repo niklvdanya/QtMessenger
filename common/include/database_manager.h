@@ -1,17 +1,20 @@
 #pragma once
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QString>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 
-class DatabaseException : public std::runtime_error {
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QString>
+
+class DatabaseException : public std::runtime_error
+{
 public:
     explicit DatabaseException(const std::string& message);
 };
 
-class IDatabase {
+class IDatabase
+{
 public:
     virtual ~IDatabase() = default;
     virtual bool addUser(const QString& username, const QString& password) = 0;
@@ -19,7 +22,8 @@ public:
     virtual bool userExists(const QString& username) = 0;
 };
 
-class DatabaseManager : public IDatabase {
+class DatabaseManager : public IDatabase
+{
 public:
     DatabaseManager();
     ~DatabaseManager() override;

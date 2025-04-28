@@ -1,18 +1,23 @@
 #include "password_window.h"
-#include "network_client_factory.h"
+
+#include <QDebug>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QDebug>
+
+#include "network_client_factory.h"
 
 PasswordWindow::PasswordWindow(const QString& username, IDatabase* dbManager, QWidget* parent)
-    : QDialog(parent), m_username(username), m_dbManager(dbManager) {
+    : QDialog(parent), m_username(username), m_dbManager(dbManager)
+{
     setWindowTitle("Enter Password");
     setFixedSize(300, 200);
     setupUi();
     applyStyles();
 }
 
-void PasswordWindow::setupUi() {
+void PasswordWindow::setupUi()
+{
     setWindowTitle("Login");
     setFixedSize(400, 550);
 
@@ -23,7 +28,7 @@ void PasswordWindow::setupUi() {
     m_statusLabel = std::make_unique<QLabel>(QString("Login for %1").arg(m_username), this);
     m_statusLabel->setObjectName("titleLabel");
     m_statusLabel->setAlignment(Qt::AlignCenter);
-    
+
     auto* avatarLabel = new QLabel(this);
     avatarLabel->setFixedSize(100, 100);
     avatarLabel->setAlignment(Qt::AlignCenter);
@@ -31,34 +36,34 @@ void PasswordWindow::setupUi() {
 
     QChar firstLetter = m_username.at(0).toUpper();
     avatarLabel->setText(QString(firstLetter));
- 
+
     auto* passwordContainer = new QWidget(this);
     auto* passwordLayout = new QHBoxLayout(passwordContainer);
     passwordLayout->setContentsMargins(0, 0, 0, 0);
     passwordLayout->setSpacing(10);
-    
+
     auto* passwordIcon = new QLabel("🔒", this);
     passwordIcon->setFixedSize(30, 30);
     passwordIcon->setAlignment(Qt::AlignCenter);
     passwordIcon->setObjectName("passwordIcon");
-    
+
     m_passwordField = std::make_unique<QLineEdit>(this);
     m_passwordField->setEchoMode(QLineEdit::Password);
     m_passwordField->setPlaceholderText("Enter password");
     m_passwordField->setMinimumHeight(50);
-    
+
     passwordLayout->addWidget(passwordIcon);
     passwordLayout->addWidget(m_passwordField.get());
 
     auto* errorLabel = new QLabel(this);
     errorLabel->setObjectName("errorLabel");
     errorLabel->setAlignment(Qt::AlignCenter);
-    errorLabel->setVisible(false); 
+    errorLabel->setVisible(false);
 
     m_submitButton = std::make_unique<QPushButton>("Login", this);
     m_submitButton->setMinimumHeight(50);
     m_submitButton->setCursor(Qt::PointingHandCursor);
-    
+
     auto* cancelButton = new QPushButton("Cancel", this);
     cancelButton->setMinimumHeight(50);
     cancelButton->setCursor(Qt::PointingHandCursor);
@@ -67,7 +72,7 @@ void PasswordWindow::setupUi() {
     auto* containerLayout = new QVBoxLayout(mainContainer);
     containerLayout->setSpacing(15);
     containerLayout->setContentsMargins(25, 25, 25, 25);
-    
+
     containerLayout->addWidget(m_statusLabel.get(), 0, Qt::AlignCenter);
     containerLayout->addSpacing(10);
     containerLayout->addWidget(avatarLabel, 0, Qt::AlignCenter);
@@ -77,7 +82,7 @@ void PasswordWindow::setupUi() {
     containerLayout->addSpacing(10);
     containerLayout->addWidget(m_submitButton.get());
     containerLayout->addWidget(cancelButton);
-    
+
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
     mainLayout->setContentsMargins(20, 20, 20, 20);
@@ -86,12 +91,14 @@ void PasswordWindow::setupUi() {
 
     connect(m_submitButton.get(), &QPushButton::clicked, this, &PasswordWindow::onSubmitClicked);
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
-    connect(m_passwordField.get(), &QLineEdit::returnPressed, this, &PasswordWindow::onSubmitClicked);
+    connect(m_passwordField.get(), &QLineEdit::returnPressed, this,
+            &PasswordWindow::onSubmitClicked);
 
     applyStyles();
 }
 
-void PasswordWindow::applyStyles() {
+void PasswordWindow::applyStyles()
+{
     setStyleSheet("QDialog { background-color: #f0f2f5; }");
 
     QWidget* mainContainer = findChild<QWidget*>("mainContainer");
@@ -101,7 +108,7 @@ void PasswordWindow::applyStyles() {
             border-radius: 30px;
         )");
     }
-    
+
     QLabel* titleLabel = findChild<QLabel*>("titleLabel");
     if (titleLabel) {
         titleLabel->setStyleSheet(R"(
@@ -111,7 +118,7 @@ void PasswordWindow::applyStyles() {
             margin-bottom: 10px;
         )");
     }
-    
+
     QLabel* avatarLabel = findChild<QLabel*>("avatarLabel");
     if (avatarLabel) {
         avatarLabel->setStyleSheet(R"(
@@ -122,7 +129,6 @@ void PasswordWindow::applyStyles() {
             font-size: 40px;
         )");
     }
-    
 
     QLabel* passwordIcon = findChild<QLabel*>("passwordIcon");
     if (passwordIcon) {
@@ -131,7 +137,6 @@ void PasswordWindow::applyStyles() {
             color: #179cde;
         )");
     }
-    
 
     QLabel* errorLabel = findChild<QLabel*>("errorLabel");
     if (errorLabel) {
@@ -141,7 +146,6 @@ void PasswordWindow::applyStyles() {
             margin-top: 10px;
         )");
     }
-    
 
     if (m_passwordField) {
         m_passwordField->setStyleSheet(R"(
@@ -152,7 +156,7 @@ void PasswordWindow::applyStyles() {
             background-color: #f5f7fa;
         )");
     }
-    
+
     if (m_submitButton) {
         m_submitButton->setStyleSheet(R"(
             background-color: #179cde;
@@ -178,7 +182,8 @@ void PasswordWindow::applyStyles() {
     }
 }
 
-void PasswordWindow::showError(const QString& message) {
+void PasswordWindow::showError(const QString& message)
+{
     QLabel* errorLabel = findChild<QLabel*>("errorLabel");
     if (errorLabel) {
         errorLabel->setText(message);
@@ -186,14 +191,15 @@ void PasswordWindow::showError(const QString& message) {
     }
 }
 
-void PasswordWindow::onSubmitClicked() {
+void PasswordWindow::onSubmitClicked()
+{
     QString password = m_passwordField->text().trimmed();
     if (password.isEmpty()) {
         showError("Please enter a password");
         return;
     }
     bool validCredentials = m_dbManager->checkUser(m_username, password);
-    qDebug() << "Local credential check for user:" << m_username 
+    qDebug() << "Local credential check for user:" << m_username
              << "result:" << (validCredentials ? "valid" : "invalid");
 
     if (validCredentials) {
@@ -202,25 +208,29 @@ void PasswordWindow::onSubmitClicked() {
             showError("Failed to create network client");
             return;
         }
-        
+
         qDebug() << "Creating chat window with username:" << m_username;
 
         auto* chatWindow = new ChatWindow(std::move(networkClient));
         chatWindow->setAttribute(Qt::WA_DeleteOnClose);
-        connect(chatWindow, &ChatWindow::loggedOut, [this]() {
-            QDialog::accept();
-        });
+        connect(chatWindow, &ChatWindow::loggedOut, [this]() { QDialog::accept(); });
         if (auto* controller = dynamic_cast<ChatController*>(chatWindow->getController())) {
             controller->setUsername(m_username.toStdString());
-            controller->connectToServer("127.0.0.1", 12345, 
-                                     m_username.toStdString(), 
-                                     password.toStdString());
+            controller->connectToServer("127.0.0.1", 12345, m_username.toStdString(),
+                                        password.toStdString());
         }
-        
+
         emit chatWindowOpened(chatWindow);
+        QTimer::singleShot(1, [this]() {
+            QWidget* loginWindow = parentWidget();
+            if (loginWindow) {
+                loginWindow->close();
+            }
+            this->close();
+        });
         chatWindow->show();
-        
-        accept();  
+
+        accept();
     } else {
         showError("Incorrect password");
     }

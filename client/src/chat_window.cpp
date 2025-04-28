@@ -1,48 +1,53 @@
 #include "chat_window.h"
-#include <QVBoxLayout>
-#include <QHBoxLayout> 
-#include <QWidget>
-#include <QMessageBox>
-#include <QDateTime>
-#include <QStyle>
 
-ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent) 
-    : QMainWindow(parent) {
+#include <QDateTime>
+#include <QHBoxLayout>
+#include <QMessageBox>
+#include <QStyle>
+#include <QVBoxLayout>
+#include <QWidget>
+
+ChatWindow::ChatWindow(std::unique_ptr<INetworkClient> networkClient, QWidget* parent)
+    : QMainWindow(parent)
+{
     setWindowTitle("Qt Chat App");
-    setMinimumSize(600, 400); 
+    setMinimumSize(600, 400);
     setupUi();
     applyStyles();
 
     m_controller = std::make_unique<ChatController>(std::move(networkClient), this);
-    
+
     connectSignals();
     updateConnectionStatus(false);
 }
 
-std::string ChatWindow::getInputText() {
+std::string ChatWindow::getInputText()
+{
     return m_inputField->text().trimmed().toStdString();
 }
 
-void ChatWindow::clearInput() {
+void ChatWindow::clearInput()
+{
     m_inputField->clear();
 }
 
-void ChatWindow::setupUi() {
+void ChatWindow::setupUi()
+{
     setWindowTitle("Qt Chat App");
     setMinimumSize(800, 600);
 
     auto* titleLabel = new QLabel("QtMessenger", this);
     titleLabel->setObjectName("titleLabel");
     titleLabel->setAlignment(Qt::AlignCenter);
-    
+
     m_logoutButton = std::make_unique<QPushButton>("Logout", this);
     m_logoutButton->setObjectName("logoutButton");
     m_logoutButton->setCursor(Qt::PointingHandCursor);
-    
+
     m_statusLabel = std::make_unique<QLabel>("Offline", this);
     m_statusLabel->setObjectName("statusLabel");
     m_statusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    
+
     auto* headerLayout = new QHBoxLayout();
     headerLayout->addWidget(m_logoutButton.get());
     headerLayout->addStretch();
@@ -60,7 +65,7 @@ void ChatWindow::setupUi() {
     m_chatHistory->setSelectionMode(QAbstractItemView::NoSelection);
     m_chatHistory->setFocusPolicy(Qt::NoFocus);
     m_chatHistory->setFrameShape(QFrame::NoFrame);
-    
+
     m_inputField = std::make_unique<QLineEdit>(this);
     m_inputField->setPlaceholderText("Type your message...");
     m_inputField->setObjectName("inputField");
@@ -70,24 +75,24 @@ void ChatWindow::setupUi() {
     emojiFont.setFamily("Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, Segoe UI, Arial");
     emojiFont.setPointSize(14);
     m_inputField->setFont(emojiFont);
-    
+
     m_emojiButton = std::make_unique<QPushButton>("😊", this);
     m_emojiButton->setObjectName("emojiButton");
     m_emojiButton->setCursor(Qt::PointingHandCursor);
     m_emojiButton->setToolTip("Insert emoji");
-    m_emojiButton->setFont(emojiFont); 
-    
+    m_emojiButton->setFont(emojiFont);
+
     m_sendButton = std::make_unique<QPushButton>("→", this);
     m_sendButton->setObjectName("sendButton");
     m_sendButton->setCursor(Qt::PointingHandCursor);
     m_sendButton->setToolTip("Send message");
-    
+
     m_usersButton = std::make_unique<QPushButton>("👥", this);
     m_usersButton->setObjectName("usersButton");
     m_usersButton->setCursor(Qt::PointingHandCursor);
     m_usersButton->setToolTip("Show users");
     m_usersButton->setFont(emojiFont);
-    
+
     auto* inputLayout = new QHBoxLayout();
     inputLayout->addWidget(m_emojiButton.get());
     inputLayout->addWidget(m_inputField.get());
@@ -96,7 +101,7 @@ void ChatWindow::setupUi() {
 
     auto* centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
-    
+
     auto* mainLayout = new QVBoxLayout(centralWidget);
     mainLayout->setSpacing(15);
     mainLayout->setContentsMargins(20, 15, 20, 15);
@@ -105,22 +110,24 @@ void ChatWindow::setupUi() {
     mainLayout->addWidget(headerSeparator);
     mainLayout->addWidget(m_chatHistory.get());
     mainLayout->addLayout(inputLayout);
-    
+
     connect(m_sendButton.get(), &QPushButton::clicked, this, &ChatWindow::sendMessage);
     connect(m_inputField.get(), &QLineEdit::returnPressed, this, &ChatWindow::sendMessage);
     connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);
     connect(m_logoutButton.get(), &QPushButton::clicked, this, &ChatWindow::logout);
     connect(m_usersButton.get(), &QPushButton::clicked, this, &ChatWindow::openUserListWindow);
-    
+
     applyStyles();
 }
 
-void ChatWindow::insertEmoji(const QString& emoji) {
+void ChatWindow::insertEmoji(const QString& emoji)
+{
     m_inputField->insert(emoji);
     m_inputField->setFocus();
 }
 
-void ChatWindow::displayChatMessage(const Message& msg) {
+void ChatWindow::displayChatMessage(const Message& msg)
+{
     bool isOwnMessage = (msg.username == m_controller->username());
     auto* messageWidget = new QWidget(m_chatHistory.get());
     messageWidget->setObjectName(isOwnMessage ? "ownMessageWidget" : "otherMessageWidget");
@@ -131,10 +138,10 @@ void ChatWindow::displayChatMessage(const Message& msg) {
     avatarLabel->setFixedSize(40, 40);
     avatarLabel->setAlignment(Qt::AlignCenter);
     avatarLabel->setObjectName("avatarLabel");
-    
+
     QChar firstLetter = QString::fromStdString(msg.username).at(0).toUpper();
     avatarLabel->setText(QString(firstLetter));
-    
+
     if (isOwnMessage) {
         avatarLabel->setStyleSheet(R"(
             background-color: #179cde;
@@ -152,7 +159,7 @@ void ChatWindow::displayChatMessage(const Message& msg) {
             font-size: 16px;
         )");
     }
-    
+
     auto* bubbleWidget = new QWidget(messageWidget);
     bubbleWidget->setObjectName(isOwnMessage ? "ownBubble" : "otherBubble");
 
@@ -173,25 +180,26 @@ void ChatWindow::displayChatMessage(const Message& msg) {
     auto* bubbleLayout = new QVBoxLayout(bubbleWidget);
     bubbleLayout->setContentsMargins(12, 8, 12, 8);
     bubbleLayout->setSpacing(2);
-    
+
     auto* headerWidget = new QWidget(bubbleWidget);
     auto* headerLayout = new QHBoxLayout(headerWidget);
     headerLayout->setContentsMargins(0, 0, 0, 2);
     headerLayout->setSpacing(10);
-    
-    auto* nameLabel = new QLabel(isOwnMessage ? "You" : QString::fromStdString(msg.username), headerWidget);
+
+    auto* nameLabel =
+        new QLabel(isOwnMessage ? "You" : QString::fromStdString(msg.username), headerWidget);
     nameLabel->setObjectName("nameLabel");
-    
+
     if (isOwnMessage) {
         nameLabel->setStyleSheet("font-weight: bold; color: #179cde;");
     } else {
         nameLabel->setStyleSheet("font-weight: bold; color: #333333;");
     }
-    
+
     auto* timeLabel = new QLabel(msg.timestamp.toString("HH:mm"), headerWidget);
     timeLabel->setObjectName("timeLabel");
     timeLabel->setStyleSheet("color: #9e9e9e; font-size: 11px;");
-    
+
     headerLayout->addWidget(nameLabel);
     headerLayout->addStretch();
     headerLayout->addWidget(timeLabel);
@@ -206,7 +214,7 @@ void ChatWindow::displayChatMessage(const Message& msg) {
     messageFont.setPointSize(14);
     textLabel->setFont(messageFont);
     textLabel->setStyleSheet("color: #333333;");
-    
+
     bubbleLayout->addWidget(headerWidget);
     bubbleLayout->addWidget(textLabel);
 
@@ -227,36 +235,36 @@ void ChatWindow::displayChatMessage(const Message& msg) {
     m_chatHistory->scrollToBottom();
 }
 
-void ChatWindow::displaySystemMessage(const std::string& message) {
-
+void ChatWindow::displaySystemMessage(const std::string& message)
+{
     auto* messageWidget = new QWidget(m_chatHistory.get());
     auto* messageLayout = new QHBoxLayout(messageWidget);
     messageLayout->setContentsMargins(5, 5, 5, 5);
-    
+
     auto* bubbleWidget = new QWidget(messageWidget);
     bubbleWidget->setObjectName("systemBubble");
     bubbleWidget->setStyleSheet(R"(
         background-color: #f1f1f1;
         border-radius: 18px;
     )");
-    
+
     auto* bubbleLayout = new QVBoxLayout(bubbleWidget);
     bubbleLayout->setContentsMargins(15, 10, 15, 10);
-    
+
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm");
     QString messageText = QString::fromStdString(message);
-    
+
     auto* textLabel = new QLabel(QString("[%1] %2").arg(timestamp).arg(messageText), bubbleWidget);
     textLabel->setAlignment(Qt::AlignCenter);
     textLabel->setWordWrap(true);
     textLabel->setStyleSheet("color: #757575; font-size: 13px; font-style: italic;");
-    
+
     bubbleLayout->addWidget(textLabel);
 
     messageLayout->addStretch();
     messageLayout->addWidget(bubbleWidget);
     messageLayout->addStretch();
-    
+
     auto* item = new QListWidgetItem(m_chatHistory.get());
     item->setSizeHint(messageWidget->sizeHint());
     m_chatHistory->addItem(item);
@@ -264,7 +272,8 @@ void ChatWindow::displaySystemMessage(const std::string& message) {
     m_chatHistory->scrollToBottom();
 }
 
-void ChatWindow::applyStyles() {
+void ChatWindow::applyStyles()
+{
     setStyleSheet(R"(
         QMainWindow {
             background-color: white;
@@ -356,51 +365,55 @@ void ChatWindow::applyStyles() {
     )");
 }
 
-void ChatWindow::updateConnectionStatus(bool connected) {
+void ChatWindow::updateConnectionStatus(bool connected)
+{
     if (connected) {
         m_statusLabel->setText("Connected");
-        m_statusLabel->setStyleSheet("color: #28a745; font-weight: bold;"); 
+        m_statusLabel->setStyleSheet("color: #28a745; font-weight: bold;");
     } else {
         m_statusLabel->setText("Disconnected");
         m_statusLabel->setStyleSheet("color: #dc3545; font-weight: bold;");
     }
 }
 
-void ChatWindow::connectSignals() {
+void ChatWindow::connectSignals()
+{
     connect(m_sendButton.get(), &QPushButton::clicked, this, &ChatWindow::sendMessage);
     connect(m_inputField.get(), &QLineEdit::returnPressed, this, &ChatWindow::sendMessage);
     connect(m_emojiButton.get(), &QPushButton::clicked, this, &ChatWindow::openEmojiWindow);
-    connect(m_logoutButton.get(), &QPushButton::clicked, this, &ChatWindow::logout); 
+    connect(m_logoutButton.get(), &QPushButton::clicked, this, &ChatWindow::logout);
     connect(m_usersButton.get(), &QPushButton::clicked, this, &ChatWindow::openUserListWindow);
 
     if (auto* networkClient = m_controller->getNetworkClient()) {
-        connect(networkClient, &NetworkClient::connectionStatusChanged,
-                this, &ChatWindow::updateConnectionStatus);
-        connect(networkClient, &NetworkClient::userListReceived,
-                this, &ChatWindow::updateUserList);
+        connect(networkClient, &NetworkClient::connectionStatusChanged, this,
+                &ChatWindow::updateConnectionStatus);
+        connect(networkClient, &NetworkClient::userListReceived, this, &ChatWindow::updateUserList);
     }
 }
 
-void ChatWindow::sendMessage() {
+void ChatWindow::sendMessage()
+{
     m_controller->sendMessage();
 }
 
-void ChatWindow::openEmojiWindow() {
+void ChatWindow::openEmojiWindow()
+{
     auto* emojiWindow = new EmojiWindow(this);
     connect(emojiWindow, &EmojiWindow::emojiSelected, this, &ChatWindow::insertEmoji);
-    emojiWindow->exec(); 
+    emojiWindow->exec();
 }
 
-void ChatWindow::logout() {
+void ChatWindow::logout()
+{
     QMessageBox confirmBox;
     confirmBox.setWindowTitle("Confirm Logout");
     confirmBox.setText("Are you sure you want to log out?");
     confirmBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
     confirmBox.setDefaultButton(QMessageBox::No);
     confirmBox.setIcon(QMessageBox::Question);
-    
+
     int result = confirmBox.exec();
-    
+
     if (result == QMessageBox::Yes) {
         m_controller->disconnect();
         emit loggedOut();
@@ -408,20 +421,23 @@ void ChatWindow::logout() {
     }
 }
 
-void ChatWindow::openUserListWindow() {
+void ChatWindow::openUserListWindow()
+{
     if (!m_userListWindow) {
         m_userListWindow = std::make_unique<UserListWindow>(this);
     }
     requestUserList();
-    
+
     m_userListWindow->show();
 }
 
-void ChatWindow::requestUserList() {
+void ChatWindow::requestUserList()
+{
     m_controller->requestUserList();
 }
 
-void ChatWindow::updateUserList(const std::vector<QString>& userList) {
+void ChatWindow::updateUserList(const std::vector<QString>& userList)
+{
     if (m_userListWindow) {
         m_userListWindow->updateUserList(userList);
     }

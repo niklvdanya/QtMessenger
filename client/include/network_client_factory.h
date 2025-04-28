@@ -1,10 +1,12 @@
 #pragma once
-#include "inetwork_client.h"
 #include <memory>
+
+#include "inetwork_client.h"
 
 class QObject;
 
-class NetworkClientFactory {
+class NetworkClientFactory
+{
 public:
     static std::unique_ptr<INetworkClient> createTcpClient(QObject* parent);
 };

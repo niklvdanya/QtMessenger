@@ -1,18 +1,22 @@
 #pragma once
 #include <cstdint>
 #include <memory>
-#include <QUuid>
 #include <string>
 #include <vector>
+
+#include <QUuid>
+
 #include "client_session_interface.h"
 
-class IMessageHandler {
+class IMessageHandler
+{
 public:
     virtual ~IMessageHandler() = default;
     virtual void handleMessage(const Message& message, QUuid senderId) = 0;
 };
 
-class IClientManager {
+class IClientManager
+{
 public:
     virtual ~IClientManager() = default;
     virtual void addClient(QUuid clientId, std::unique_ptr<IClientSession> client) = 0;
@@ -23,7 +27,8 @@ public:
     virtual size_t getClientCount() const = 0;
 };
 
-class IServer {
+class IServer
+{
 public:
     virtual ~IServer() = default;
     virtual void start(uint16_t port) = 0;

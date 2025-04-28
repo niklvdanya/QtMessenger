@@ -1,21 +1,24 @@
 #pragma once
+#include <memory>
+
 #include <QDialog>
+#include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QLabel>
-#include <memory>
-#include "database_manager.h"
+
 #include "chat_window.h"
+#include "database_manager.h"
 #include "inetwork_client.h"
 
-class PasswordWindow : public QDialog {
+class PasswordWindow : public QDialog
+{
     Q_OBJECT
 public:
     PasswordWindow(const QString& username, IDatabase* dbManager, QWidget* parent = nullptr);
     ~PasswordWindow() override = default;
-    
+
 signals:
-    void chatWindowOpened(ChatWindow* chatWindow);  
+    void chatWindowOpened(ChatWindow* chatWindow);
 
 private slots:
     void onSubmitClicked();

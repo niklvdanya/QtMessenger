@@ -1,10 +1,12 @@
 #pragma once
+#include <vector>
+
 #include <QDialog>
 #include <QGridLayout>
 #include <QPushButton>
-#include <vector>
 
-class EmojiWindow : public QDialog {
+class EmojiWindow : public QDialog
+{
     Q_OBJECT
 public:
     explicit EmojiWindow(QWidget* parent = nullptr);

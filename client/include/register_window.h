@@ -1,12 +1,15 @@
 #pragma once
+#include <memory>
+
 #include <QDialog>
+#include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QLabel>
-#include <memory>
+
 #include "database_manager.h"
 
-class RegisterWindow : public QDialog {
+class RegisterWindow : public QDialog
+{
     Q_OBJECT
 public:
     explicit RegisterWindow(IDatabase* dbManager, QWidget* parent = nullptr);

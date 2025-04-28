@@ -1,19 +1,23 @@
 #pragma once
-#include <QMainWindow>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
 #include <memory>
+
+#include <QLabel>
+#include <QLineEdit>
+#include <QMainWindow>
+#include <QPushButton>
+
 #include "database_manager.h"
 
-class IAuthView {
+class IAuthView
+{
 public:
     virtual ~IAuthView() = default;
     virtual void displayErrorMessage(const QString& message) = 0;
     virtual void clearErrorMessage() = 0;
 };
 
-class LoginWindow : public QMainWindow, public IAuthView {
+class LoginWindow : public QMainWindow, public IAuthView
+{
     Q_OBJECT
 public:
     explicit LoginWindow(IDatabase* dbManager, QWidget* parent = nullptr);
@@ -23,7 +27,7 @@ public:
     void clearErrorMessage() override;
 
 signals:
-    void chatWindowClosed();  
+    void chatWindowClosed();
 
 private slots:
     void onLoginClicked();
