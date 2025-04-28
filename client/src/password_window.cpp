@@ -75,16 +75,29 @@ void PasswordWindow::onSubmitClicked() {
         return;
     }
 
+    // Проверяем локально, чтобы убедиться, что учетные данные действительны
     bool localCheck = m_dbManager->checkUser(m_username, password);
+    qDebug() << "Local credential check for user:" << m_username 
+             << "result:" << (localCheck ? "valid" : "invalid");
 
     if (localCheck) {
-        auto networkClient = NetworkClientFactory::createTcpClient(nullptr);         
+        // Создаем сетевого клиента и подключаемся к серверу
+        auto networkClient = NetworkClientFactory::createTcpClient(nullptr);
+        
+        // Подробно логируем процесс подключения
+        qDebug() << "Connecting to server with username:" << m_username;
+                 
         networkClient->connectToServer("127.0.0.1", 12345, m_username.toStdString(), password.toStdString()); 
         
+        // Создаем и показываем окно чата
         ChatWindow* chatWindow = new ChatWindow(std::move(networkClient));
+        chatWindow->setAttribute(Qt::WA_DeleteOnClose);  // Автоматически удалять окно при закрытии
         chatWindow->show();
-        accept();
-        parentWidget()->close();
+        
+        // Отправляем сигнал о создании окна чата
+        emit chatWindowOpened(chatWindow);
+        
+        accept();  // Закрываем диалог ввода пароля
     } else {
         m_statusLabel->setText("Incorrect password");
         m_statusLabel->setStyleSheet("color: #dc3545;");

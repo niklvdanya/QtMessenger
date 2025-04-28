@@ -31,7 +31,11 @@ public slots:
     void updateConnectionStatus(bool connected);
     void openEmojiWindow();
     void insertEmoji(const QString& emoji);
-    void handleMessageReceived(const Message& msg); 
+    void handleMessageReceived(const Message& msg);
+    void logout();  
+ 
+signals:
+    void loggedOut();  
 
 private:
     void setupUi();
@@ -41,7 +45,8 @@ private:
     std::unique_ptr<QListWidget> m_chatHistory;
     std::unique_ptr<QLineEdit> m_inputField;
     std::unique_ptr<QPushButton> m_sendButton;
-    std::unique_ptr<QPushButton> m_emojiButton; 
+    std::unique_ptr<QPushButton> m_emojiButton;
+    std::unique_ptr<QPushButton> m_logoutButton;  
     std::unique_ptr<QLabel> m_statusLabel;
     std::unique_ptr<ChatController> m_controller;
 };

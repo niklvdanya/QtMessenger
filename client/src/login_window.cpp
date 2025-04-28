@@ -1,6 +1,7 @@
 #include "login_window.h"
 #include "password_window.h"
 #include "register_window.h"
+#include "chat_window.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QWidget>
@@ -88,6 +89,17 @@ void LoginWindow::onLoginClicked() {
     }
 
     PasswordWindow* passwordWindow = new PasswordWindow(username, m_dbManager, this);
+
+    connect(passwordWindow, &PasswordWindow::chatWindowOpened, this, [this](ChatWindow* chatWindow) {
+        connect(chatWindow, &ChatWindow::loggedOut, this, [this]() {
+            show();
+            m_usernameField->clear();
+            m_titleLabel->setText("Qt Chat App");
+            m_titleLabel->setStyleSheet("color: #333333;");
+        });
+        hide();
+    });
+    
     passwordWindow->exec();
 }
 

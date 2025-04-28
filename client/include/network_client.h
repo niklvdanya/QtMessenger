@@ -21,6 +21,7 @@ public:
     void setDisconnectedCallback(const DisconnectedCallback& callback) override;
     void sendMessage(std::string_view message) override;
     void setMessageCallback(const MessageCallback& callback) override;
+    void disconnect() override; 
 
 signals:
     void messageReceived(const Message& msg);

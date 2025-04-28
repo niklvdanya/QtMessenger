@@ -29,6 +29,24 @@ void NetworkClient::connectToServer(std::string_view host, std::uint16_t port, s
     m_socket->connectToHost(QString::fromStdString(std::string(host)), port);
 }
 
+void NetworkClient::disconnect() {
+    qDebug() << "Disconnecting from server...";
+
+    if (m_socket && m_socket->state() == QAbstractSocket::ConnectedState) {
+        m_socket->disconnectFromHost();
+
+        if (m_socket->state() != QAbstractSocket::UnconnectedState) {
+            m_socket->waitForDisconnected(1000); 
+        }
+        
+        qDebug() << "Disconnected from server";
+    } else {
+        qDebug() << "Not connected to server, no need to disconnect";
+    }
+
+    m_receivedBuffer.clear();
+}
+
 void NetworkClient::onConnected() {
     qDebug() << "Connected to server, sending credentials...";
     QString usernameStr = QString::fromStdString(m_username);
@@ -37,10 +55,13 @@ void NetworkClient::onConnected() {
     QDataStream out(&block, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_0);
     out << usernameStr << passwordStr;
+    m_socket->write(block);
+    m_socket->flush();
+    
+    qDebug() << "Credentials sent to server for username:" << usernameStr;
     
     emit connectionStatusChanged(true);
 }
-
 void NetworkClient::sendMessage(std::string_view message) {
     if (!m_socket || m_socket->state() != QAbstractSocket::ConnectedState) {
         qDebug() << "Not connected to server";
@@ -82,7 +103,6 @@ void NetworkClient::onReadyRead() {
 void NetworkClient::processBuffer() {
     QDataStream stream(&m_receivedBuffer, QIODevice::ReadOnly);
     stream.setVersion(QDataStream::Qt_6_0);
-
     qint64 startPos = stream.device()->pos();
     while (!stream.atEnd()) {
         qint64 currentPos = stream.device()->pos();
@@ -92,12 +112,14 @@ void NetworkClient::processBuffer() {
             stream.device()->seek(currentPos);
             break;
         }
- 
+
         emit messageReceived(msg);
+
         if (m_messageCallback) {
             m_messageCallback(msg.username, msg.text);
         }
     }
+
     qint64 processedBytes = stream.device()->pos() - startPos;
     if (processedBytes > 0) {
         m_receivedBuffer.remove(0, processedBytes);
